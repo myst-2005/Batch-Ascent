@@ -1,0 +1,88 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(var(--surface-hover) 1px, transparent 1px);
+  background-size: 30px 30px;
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 400px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #0000FF;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.roleSelector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.roleBtn {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.roleBtn.active {
+  border-color: var(--primary);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary);
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.inputWrapper {
+  position: relative;
+}
+
+.icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.inputWithIcon {
+  padding-left: 2.5rem;
+}

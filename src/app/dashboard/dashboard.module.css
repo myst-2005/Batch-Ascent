@@ -1,0 +1,99 @@
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: #1e3a8a;
+    /* Dark Royal Blue */
+    border-right: 1px solid #1e40af;
+    padding: 2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    color: white;
+    transition: width 0.3s ease, padding 0.3s ease;
+}
+
+.collapsed {
+    width: 80px;
+    padding: 2rem 0.5rem;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 3rem;
+    padding-left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.navItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    color: #bfdbfe;
+    /* Light Blue Text */
+    transition: all 0.2s;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    font-family: inherit;
+    /* Ensure buttons inherit font */
+    font-size: 1rem;
+    /* Ensure consistent size */
+    background: transparent;
+    /* Default for buttons */
+    border: none;
+    /* Default for buttons */
+    width: 100%;
+    /* Default for buttons */
+    cursor: pointer;
+}
+
+.navItem:hover,
+.navItem.active {
+    background: #2563eb;
+    /* Bright Blue on hover */
+    color: white;
+}
+
+.main {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    background: #e2e8f0;
+    /* Darker White (Light Gray) */
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-size: 1.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.userProfile {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
