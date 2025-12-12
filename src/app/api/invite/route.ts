@@ -5,8 +5,43 @@ export async function POST(request: Request) {
     try {
         const { email, role, school, name } = await request.json()
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+        if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+            console.error('Missing Supabase Environment Variables', {
+                url: !!supabaseUrl,
+                serviceRole: !!serviceRoleKey,
+                anon: !!anonKey
+            })
+            return NextResponse.json({ error: 'Server configuration error: Missing Supabase keys' }, { status: 500 })
+        }
+
+        // 0. Verify the requester is an Admin
+        const authHeader = request.headers.get('Authorization')
+        if (!authHeader) {
+            return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 })
+        }
+
+        const token = authHeader.replace('Bearer ', '')
+        const supabase = createClient(supabaseUrl, anonKey)
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+        }
+
+        // Check if user is admin
+        const { data: userData, error: roleError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || userData?.role !== 'ADMIN') {
+            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
+        }
 
         const supabaseAdmin = createClient(
             supabaseUrl,
@@ -19,6 +54,12 @@ export async function POST(request: Request) {
             }
         )
 
+        // Determine App URL (fallback to origin if env var is missing)
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL
+        if (!appUrl) {
+            appUrl = request.headers.get('origin') || 'http://localhost:3000'
+        }
+
         // 1. Invite the user via Supabase Auth
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
             data: {
@@ -26,7 +67,7 @@ export async function POST(request: Request) {
                 school,
                 name
             },
-            redirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/auth/callback`
+            redirectTo: `${appUrl}/auth/callback`
         })
 
         if (authError) {
@@ -64,6 +105,7 @@ export async function POST(request: Request) {
                 }
             }
 
+            console.error('Invite failed (Auth):', authError)
             return NextResponse.json({ error: authError.message }, { status: 400 })
         }
 

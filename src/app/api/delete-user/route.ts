@@ -9,9 +9,34 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
         }
 
-        // Fallback to hardcoded values if env vars not available
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://jawimglodnhhidvvpgar.supabase.co'
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imphd2ltZ2xvZG5oaGlkdnZwZ2FyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NTM4NzI2MywiZXhwIjoyMDgwOTYzMjYzfQ.7J_J6OY8EJKMHPJnlxRIOJQHEHIN52txYGjwbH0Ei-U'
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+        // 0. Verify the requester is an Admin
+        const authHeader = request.headers.get('Authorization')
+        if (!authHeader) {
+            return NextResponse.json({ error: 'Missing Authorization header' }, { status: 401 })
+        }
+
+        const token = authHeader.replace('Bearer ', '')
+        const supabase = createClient(supabaseUrl, anonKey)
+        const { data: { user }, error: userError } = await supabase.auth.getUser(token)
+
+        if (userError || !user) {
+            return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+        }
+
+        // Check if user is admin
+        const { data: userData, error: roleError } = await supabase
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || userData?.role !== 'ADMIN') {
+            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
+        }
 
         const supabaseAdmin = createClient(
             supabaseUrl,
