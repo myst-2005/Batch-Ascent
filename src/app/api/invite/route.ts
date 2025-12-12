@@ -9,6 +9,14 @@ export async function POST(request: Request) {
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
         const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+        // DEBUGGING: Log environment variable details
+        console.log('DEBUG: Checking Supabase Config')
+        console.log('DEBUG: URL:', supabaseUrl)
+        console.log('DEBUG: Service Role Key Length:', serviceRoleKey?.length)
+        console.log('DEBUG: Service Role Key Start:', serviceRoleKey?.substring(0, 5))
+        console.log('DEBUG: Service Role Key End:', serviceRoleKey?.substring(serviceRoleKey.length - 5))
+        console.log('DEBUG: Is Valid Service Role Key (simple check):', serviceRoleKey?.startsWith('eyJ'))
+
         if (!supabaseUrl || !serviceRoleKey || !anonKey) {
             console.error('Missing Supabase Environment Variables', {
                 url: !!supabaseUrl,
@@ -59,8 +67,10 @@ export async function POST(request: Request) {
         if (!appUrl) {
             appUrl = request.headers.get('origin') || 'http://localhost:3000'
         }
+        console.log('DEBUG: Using App URL:', appUrl)
 
         // 1. Invite the user via Supabase Auth
+        console.log('DEBUG: Attempting to invite user:', email)
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
             data: {
                 role,
