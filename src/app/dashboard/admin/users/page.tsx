@@ -62,9 +62,14 @@ export default function AdminUsersPage() {
         if (!confirm('Are you sure you want to delete this user? This will remove their login access.')) return
 
         try {
+            const { data: { session } } = await supabase.auth.getSession()
+
             const response = await fetch('/api/delete-user', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
                 body: JSON.stringify({ id })
             })
 

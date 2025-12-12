@@ -9,9 +9,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
         }
 
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+        const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+        if (!supabaseUrl || !serviceRoleKey || !anonKey) {
+            console.error('Missing Supabase Environment Variables (delete info)', {
+                url: !!supabaseUrl,
+                serviceRole: !!serviceRoleKey,
+                anon: !!anonKey
+            })
+            return NextResponse.json({ error: 'Server configuration error: Missing Supabase keys' }, { status: 500 })
+        }
 
         // 0. Verify the requester is an Admin
         const authHeader = request.headers.get('Authorization')
