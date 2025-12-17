@@ -117,7 +117,7 @@ export default function AdminUsersPage() {
                         ))}
                     </select>
 
-                    {newUser.role !== 'ADMIN' && (
+                    {newUser.role !== 'ADMIN' && newUser.role !== 'CEO' && (
                         <select
                             className="input"
                             value={newUser.school}

@@ -9,5 +9,9 @@ export const ROLES = {
     ADMIN: 'ADMIN',
     SHO: 'SHO',
     ACADEMIC_LEAD: 'ACADEMIC_LEAD',
-    SALES: 'SALES'
+    SALES: 'SALES',
+    PROJECT_LEAD: 'PROJECT_LEAD',
+    SSHO: 'SSHO',
+    SALES_HEAD: 'SALES_HEAD',
+    CEO: 'CEO'
 } as const
