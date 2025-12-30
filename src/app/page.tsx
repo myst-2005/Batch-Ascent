@@ -38,6 +38,12 @@ export default function LoginPage() {
         if (userError) throw userError
 
         if (userData) {
+          // Check for PENDING role
+          if (userData.role === 'PENDING') {
+            await supabase.auth.signOut()
+            throw new Error('Waiting for approval from Admin.')
+          }
+
           // Role is automatically determined from database
           localStorage.setItem('userRole', userData.role)
           localStorage.setItem('userName', userData.name)
@@ -110,7 +116,10 @@ export default function LoginPage() {
           </div>
 
           <div className={styles.inputGroup}>
-            <label className={styles.label}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+              <label className={styles.label} style={{ marginBottom: 0 }}>Password</label>
+              <a href="/forgot-password" style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'none' }}>Forgot Password?</a>
+            </div>
             <div className={styles.inputWrapper}>
               <Lock className={styles.icon} />
               <input
@@ -127,6 +136,12 @@ export default function LoginPage() {
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
             Sign In
           </button>
+
+          <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              Don't have an account? <a href="/signup" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>Sign Up</a>
+            </p>
+          </div>
         </form>
       </div>
     </div>

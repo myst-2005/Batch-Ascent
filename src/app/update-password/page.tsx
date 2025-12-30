@@ -9,18 +9,34 @@ export default function UpdatePasswordPage() {
     const [password, setPassword] = useState('')
     const [phone, setPhone] = useState('')
     const [loading, setLoading] = useState(false)
-    const [userRole, setUserRole] = useState<string | null>(null)
-
+    const [needsPhone, setNeedsPhone] = useState(false)
+    const [userData, setUserData] = useState<any>(null)
 
     useEffect(() => {
-        // Fetch user role from Auth metadata (set during invitation)
-        const fetchUserRole = async () => {
+        const init = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-            if (user?.user_metadata?.role) {
-                setUserRole(user.user_metadata.role)
+
+            if (user) {
+                // Fetch Profile from DB to check status/role/sales_id
+                const { data: profile } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('id', user.id)
+                    .single()
+
+                if (profile) {
+                    setUserData(profile)
+                    // If SALES and NO sales_id, we need phone to generate ID
+                    if (profile.role === 'SALES' && !profile.sales_id) {
+                        setNeedsPhone(true)
+                    }
+                } else if (user.user_metadata?.role === 'SALES') {
+                    // Fallback for Invite flow if DB record missing (unlikely if trigger works, but safe)
+                    setNeedsPhone(true)
+                }
             }
         }
-        fetchUserRole()
+        init()
     }, [])
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -28,36 +44,26 @@ export default function UpdatePasswordPage() {
         setLoading(true)
 
         try {
+            // 1. Update Password
             const { error } = await supabase.auth.updateUser({ password })
             if (error) throw error
 
-            // Get current user and metadata
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user && user.email) {
-                // Get user data from metadata (set during invitation)
-                const name = user.user_metadata?.name || 'User'
-                const role = user.user_metadata?.role || 'SHO'
-                const school = user.user_metadata?.school || ''
+            // 2. Handle Sales ID Generation if needed
+            if (needsPhone && phone) {
+                const { data: { user } } = await supabase.auth.getUser()
+                // Use profile data or metadata
+                const role = userData?.role || user?.user_metadata?.role
+                const school = userData?.school || user?.user_metadata?.school || ''
 
-                const updateData: any = {
-                    id: user.id,
-                    email: user.email,
-                    name: name,
-                    role: role,
-                    school: school,
-                    password: 'SECURE_HASH'
-                }
-
-                // If SALES role and phone provided, generate sales_id
-                if (role === 'SALES' && phone) {
-                    // Determine school prefix
+                // Double check if role is indeed SALES (redundant but safe)
+                if (role === 'SALES') {
+                    // Logic to Generate ID
                     let schoolPrefix = 'SALES'
                     if (school.toLowerCase().includes('tech')) schoolPrefix = 'TS'
                     else if (school.toLowerCase().includes('design')) schoolPrefix = 'DS'
                     else if (school.toLowerCase().includes('marketing')) schoolPrefix = 'MS'
                     else if (school.toLowerCase().includes('finance')) schoolPrefix = 'FS'
 
-                    // Get count of existing sales users from this school
                     const { count } = await supabase
                         .from('users')
                         .select('*', { count: 'exact', head: true })
@@ -68,20 +74,17 @@ export default function UpdatePasswordPage() {
                     const salesNumber = (count || 0) + 1
                     const salesId = `${schoolPrefix}${String(salesNumber).padStart(3, '0')}`
 
-                    updateData.sales_id = salesId
-                    updateData.phone = phone
-                }
-
-                // Use upsert to create or update the user record
-                const { error: dbError } = await supabase.from('users').upsert(updateData)
-
-                if (dbError) {
-                    console.error('Database error:', dbError)
-                    throw new Error('Failed to save user data')
+                    await supabase
+                        .from('users')
+                        .update({
+                            sales_id: salesId,
+                            phone: phone
+                        })
+                        .eq('id', user?.id)
                 }
             }
 
-            alert('Password updated successfully! You can now login.')
+            alert('Password updated successfully!')
             router.push('/')
         } catch (error: any) {
             alert('Error updating password: ' + error.message)
@@ -114,7 +117,7 @@ export default function UpdatePasswordPage() {
                         <Lock size={24} />
                     </div>
                     <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Set New Password</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Please create a secure password for your account.</p>
+                    <p style={{ color: 'var(--text-secondary)' }}>Enter your new password below.</p>
                 </div>
 
                 <form onSubmit={handleUpdatePassword} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -131,10 +134,10 @@ export default function UpdatePasswordPage() {
                         />
                     </div>
 
-                    {userRole === 'SALES' && (
+                    {needsPhone && (
                         <div>
                             <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-                                Phone Number
+                                Phone Number (Required for Sales ID)
                             </label>
                             <div style={{ position: 'relative' }}>
                                 <Phone size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
@@ -148,9 +151,6 @@ export default function UpdatePasswordPage() {
                                     style={{ paddingLeft: '40px' }}
                                 />
                             </div>
-                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                                Your Sales ID will be auto-generated after setup
-                            </p>
                         </div>
                     )}
 

@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { Users, TrendingUp } from 'lucide-react'
+import { Users, TrendingUp, CheckCircle } from 'lucide-react'
 
 interface Batch {
     id: string
@@ -26,14 +26,20 @@ export default function SalesDashboard() {
     const [userSchool, setUserSchool] = useState<string | null>(null)
     const [salesId, setSalesId] = useState<string | null>(null)
 
+    const [userRole, setUserRole] = useState<string | null>(null)
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setUserSchool(localStorage.getItem('userSchool'))
             setSalesId(localStorage.getItem('salesId'))
+            setUserRole(localStorage.getItem('userRole'))
         }
         fetchBatches()
-        fetchStats()
     }, [])
+
+    useEffect(() => {
+        if (userSchool) fetchStats()
+    }, [userSchool, userRole]) // Re-fetch stats when school/role is available
 
     const fetchBatches = async () => {
         try {
@@ -72,30 +78,64 @@ export default function SalesDashboard() {
 
     const fetchStats = async () => {
         try {
+            const role = localStorage.getItem('userRole')
+            const school = localStorage.getItem('userSchool')
             const salesIdValue = localStorage.getItem('salesId')
-            if (!salesIdValue) return
 
-            // Total enrollments by this sales person
-            const { count: totalCount } = await supabase
-                .from('sales_enrollments')
-                .select('*', { count: 'exact', head: true })
-                .eq('sales_id', salesIdValue)
+            if (role === 'SALES_HEAD' && school) {
+                // Fetch all batches for this school first
+                const { data: schoolBatches } = await supabase
+                    .from('batches')
+                    .select('id')
+                    .eq('school', school)
 
-            // This month's enrollments
-            const startOfMonth = new Date()
-            startOfMonth.setDate(1)
-            startOfMonth.setHours(0, 0, 0, 0)
+                if (schoolBatches && schoolBatches.length > 0) {
+                    const batchIds = schoolBatches.map(b => b.id)
 
-            const { count: monthCount } = await supabase
-                .from('sales_enrollments')
-                .select('*', { count: 'exact', head: true })
-                .eq('sales_id', salesIdValue)
-                .gte('enrolled_at', startOfMonth.toISOString())
+                    // Total School Enrollments
+                    const { count: totalCount } = await supabase
+                        .from('student_batches')
+                        .select('*', { count: 'exact', head: true })
+                        .in('batch_id', batchIds)
 
-            setStats({
-                total_enrollments: totalCount || 0,
-                this_month: monthCount || 0
-            })
+                    // This Month School Enrollments
+                    const startOfMonth = new Date()
+                    startOfMonth.setDate(1)
+                    startOfMonth.setHours(0, 0, 0, 0)
+
+                    const { count: monthCount } = await supabase
+                        .from('student_batches')
+                        .select('*', { count: 'exact', head: true })
+                        .in('batch_id', batchIds)
+                        .gte('linked_at', startOfMonth.toISOString()) // Assuming linked_at is used for enrollment time
+
+                    setStats({
+                        total_enrollments: totalCount || 0,
+                        this_month: monthCount || 0
+                    })
+                }
+            } else if (salesIdValue) {
+                // Original logic for SALES role
+                const { count: totalCount } = await supabase
+                    .from('sales_enrollments')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('sales_id', salesIdValue)
+
+                const startOfMonth = new Date()
+                startOfMonth.setDate(1)
+                startOfMonth.setHours(0, 0, 0, 0)
+
+                const { count: monthCount } = await supabase
+                    .from('sales_enrollments')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('sales_id', salesIdValue)
+                    .gte('enrolled_at', startOfMonth.toISOString())
+
+                setStats({
+                    total_enrollments: totalCount || 0,
+                    this_month: monthCount || 0
+                })
+            }
         } catch (error) {
             console.error('Error fetching stats:', error)
         }
@@ -115,7 +155,9 @@ export default function SalesDashboard() {
                             <Users size={24} />
                         </div>
                         <div>
-                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Enrollments</p>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                                {userRole === 'SALES_HEAD' ? 'School Enrollments' : 'Total Enrollments'}
+                            </p>
                             <p style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.total_enrollments}</p>
                         </div>
                     </div>
@@ -133,13 +175,16 @@ export default function SalesDashboard() {
                     </div>
                 </div>
 
-                <div className="card" style={{ padding: '1.5rem' }}>
-                    <div>
-                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Your Sales ID</p>
-                        <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{salesId || 'Not assigned'}</p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Use this ID when filling enrollment forms</p>
+                {/* Only show Sales ID card for SALES role */}
+                {userRole === 'SALES' && (
+                    <div className="card" style={{ padding: '1.5rem' }}>
+                        <div>
+                            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>Your Sales ID</p>
+                            <p style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{salesId || 'Not assigned'}</p>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Use this ID when filling enrollment forms</p>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Batches Table */}

@@ -62,6 +62,24 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
         fetchHistory()
     }, [])
 
+    const [availableSHOs, setAvailableSHOs] = useState<any[]>([])
+
+    // ... (rest of imports)
+
+    const fetchSHOs = async (school: string) => {
+        try {
+            const { data, error } = await supabase
+                .from('users')
+                .select('name')
+                .eq('role', 'SHO')
+                .eq('school', school)
+
+            if (data) setAvailableSHOs(data)
+        } catch (error) {
+            console.error('Error fetching SHOs:', error)
+        }
+    }
+
     const fetchBatchDetails = async () => {
         try {
             const { data, error } = await supabase
@@ -73,6 +91,9 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
             if (error) throw error
             setFormData(data)
             setOriginalData(data)
+            if (data.school) {
+                fetchSHOs(data.school)
+            }
         } catch (error) {
             console.error('Error fetching batch:', error)
             alert('Failed to load batch details')
@@ -286,6 +307,22 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
                         <label className="label">Strength</label>
                         <input type="number" name="strength" className="input" value={formData.strength} onChange={handleChange} required />
                     </div>
+                </div>
+
+                <div>
+                    <label className="label">SHO Name</label>
+                    <select
+                        name="sho_name"
+                        className="input"
+                        value={formData.sho_name || ''}
+                        onChange={handleChange}
+                        required
+                    >
+                        <option value="">Select SHO</option>
+                        {availableSHOs.map((sho, index) => (
+                            <option key={index} value={sho.name}>{sho.name}</option>
+                        ))}
+                    </select>
                 </div>
 
                 <div>

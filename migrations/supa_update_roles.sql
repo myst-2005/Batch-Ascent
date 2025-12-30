@@ -4,7 +4,7 @@ ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check;
 
 ALTER TABLE users 
 ADD CONSTRAINT users_role_check 
-CHECK (role IN ('ADMIN', 'SHO', 'ACADEMIC_LEAD', 'SALES', 'PROJECT_LEAD', 'SSHO', 'SALES_HEAD', 'CEO'));
+CHECK (role IN ('ADMIN', 'SHO', 'ACADEMIC_LEAD', 'SALES', 'PROJECT_LEAD', 'SSHO', 'SALES_HEAD', 'CEO', 'PENDING'));
 
 -- 2. If 'role' is actually an ENUM type (e.g., named 'app_role' or 'user_role'), run these instead:
 -- ALTER TYPE app_role ADD VALUE 'PROJECT_LEAD';

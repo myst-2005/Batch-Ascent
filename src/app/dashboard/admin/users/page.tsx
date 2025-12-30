@@ -156,23 +156,77 @@ export default function AdminUsersPage() {
                                     <td style={{ padding: '1rem' }}>{user.name}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{user.email}</td>
                                     <td style={{ padding: '1rem' }}>
-                                        <span style={{
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '0.25rem',
-                                            background: 'var(--surface-hover)',
-                                            fontSize: '0.875rem'
-                                        }}>
-                                            {user.role}
-                                        </span>
+                                        <select
+                                            className="input"
+                                            value={user.role}
+                                            onChange={(e) => {
+                                                const newRole = e.target.value
+                                                setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u))
+                                            }}
+                                            style={{ padding: '0.25rem', fontSize: '0.875rem' }}
+                                        >
+                                            {Object.values(ROLES).map(role => (
+                                                <option key={role} value={role}>{role}</option>
+                                            ))}
+                                        </select>
                                     </td>
-                                    <td style={{ padding: '1rem' }}>{user.school || '-'}</td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <select
+                                            className="input"
+                                            value={user.school || ''}
+                                            onChange={(e) => {
+                                                const newSchool = e.target.value
+                                                setUsers(users.map(u => u.id === user.id ? { ...u, school: newSchool } : u))
+                                            }}
+                                            style={{ padding: '0.25rem', fontSize: '0.875rem', maxWidth: '150px' }}
+                                        >
+                                            <option value="">-</option>
+                                            {SCHOOLS.map(school => (
+                                                <option key={school} value={school}>{school}</option>
+                                            ))}
+                                        </select>
+                                    </td>
                                     <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{user.cliq_id || '-'}</td>
                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <button
                                             onClick={async () => {
-                                                const cliqId = prompt('Enter Cliq ID:', user.cliq_id || '')
-                                                if (cliqId === null) return // Cancelled
+                                                if (!confirm(`Are you sure you want to update ${user.email}?\nRole: ${user.role}\nSchool: ${user.school || 'None'}`)) return
 
+                                                try {
+                                                    const res = await fetch('/api/update-user', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            id: user.id,
+                                                            role: user.role,
+                                                            school: user.school
+                                                        })
+                                                    })
+
+                                                    if (!res.ok) throw new Error('Failed to update')
+                                                    alert('User updated successfully')
+                                                } catch (err: any) {
+                                                    alert('Error updating user: ' + err.message)
+                                                }
+                                            }}
+                                            className="btn-primary"
+                                            style={{
+                                                padding: '0.25rem 0.5rem',
+                                                fontSize: '0.75rem',
+                                                marginRight: '0.5rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            Save
+                                        </button>
+                                        <button
+                                            onClick={async () => {
+                                                const cliqId = prompt('Enter Cliq ID:', user.cliq_id || '')
+                                                if (cliqId === null) return
+                                                // ... existing Cliq ID logic is separate, or we can merge it.
+                                                // For now keeping it separate as getting too complex in one step
                                                 try {
                                                     const res = await fetch('/api/update-user', {
                                                         method: 'POST',
@@ -182,23 +236,15 @@ export default function AdminUsersPage() {
                                                             cliq_id: cliqId
                                                         })
                                                     })
-
                                                     if (!res.ok) throw new Error('Failed to update')
-
-                                                    // Refresh list
                                                     fetchUsers()
-                                                } catch (err) {
-                                                    alert('Error updating Cliq ID')
-                                                }
+                                                } catch (err) { alert('Error updating Cliq ID') }
                                             }}
                                             className="btn-secondary"
-                                            style={{
-                                                padding: '0.25rem 0.5rem',
-                                                fontSize: '0.75rem',
-                                                marginRight: '0.5rem'
-                                            }}
+                                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                            title="Set Cliq ID"
                                         >
-                                            Set ID
+                                            ID
                                         </button>
                                         <button
                                             onClick={() => handleDeleteUser(user.id)}

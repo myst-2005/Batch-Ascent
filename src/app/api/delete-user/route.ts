@@ -36,17 +36,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
         }
 
-        // Check if user is admin
-        const { data: userData, error: roleError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-        if (roleError || userData?.role !== 'ADMIN') {
-            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
-        }
-
         const supabaseAdmin = createClient(
             supabaseUrl,
             serviceRoleKey,
@@ -57,6 +46,20 @@ export async function POST(request: Request) {
                 }
             }
         )
+
+        // Check if user is admin using Service Role (bypasses RLS issues for the check)
+        const { data: userData, error: roleError } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || userData?.role !== 'ADMIN') {
+            console.log("DEBUG: Permission Denied. User ID:", user.id);
+            console.log("DEBUG: Role Error:", roleError);
+            console.log("DEBUG: User Role Data:", userData);
+            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
+        }
 
         // 1. Delete from Auth Users (This is the critical part)
         const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id)

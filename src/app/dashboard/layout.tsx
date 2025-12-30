@@ -16,7 +16,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     useEffect(() => {
         const storedRole = localStorage.getItem('userRole')
-        if (!storedRole) {
+        if (!storedRole || storedRole === 'PENDING') {
+            if (storedRole === 'PENDING') {
+                // Clear invalid session if any
+                localStorage.removeItem('userRole')
+            }
             router.push('/')
         } else {
             setRole(storedRole)
@@ -39,6 +43,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD'] },
         { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO'] },
         { label: 'Manage Users', href: '/dashboard/admin/users', icon: Users, roles: ['ADMIN'] },
+        { label: 'Approve Users', href: '/dashboard/admin/approve-users', icon: Users, roles: ['ADMIN'] },
     ]
 
     return (

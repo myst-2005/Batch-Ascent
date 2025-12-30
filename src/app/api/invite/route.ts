@@ -40,17 +40,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
         }
 
-        // Check if user is admin
-        const { data: userData, error: roleError } = await supabase
-            .from('users')
-            .select('role')
-            .eq('id', user.id)
-            .single()
-
-        if (roleError || userData?.role !== 'ADMIN') {
-            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
-        }
-
         const supabaseAdmin = createClient(
             supabaseUrl,
             serviceRoleKey,
@@ -61,6 +50,20 @@ export async function POST(request: Request) {
                 }
             }
         )
+
+        // Check if user is admin
+        const { data: userData, error: roleError } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+
+        if (roleError || userData?.role !== 'ADMIN') {
+            console.log("DEBUG INVITE: Permission Denied. User ID:", user.id);
+            console.log("DEBUG INVITE: Role Error:", roleError);
+            console.log("DEBUG INVITE: User Role Data:", userData);
+            return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
+        }
 
         // Determine App URL (fallback to origin if env var is missing)
         let appUrl = process.env.NEXT_PUBLIC_APP_URL
@@ -93,9 +96,10 @@ export async function POST(request: Request) {
                             id: existingUser.id,
                             email: email,
                             name: name,
-                            role: role,
+                            role: 'PENDING',
+                            requested_role: role,
                             school: school,
-                            password: 'MANAGED_BY_SUPABASE_AUTH'
+
                         })
 
                     if (dbError) {
@@ -126,9 +130,10 @@ export async function POST(request: Request) {
                 id: authData.user.id,
                 email: email,
                 name: name,
-                role: role,
+                role: 'PENDING',
+                requested_role: role,
                 school: school,
-                password: 'MANAGED_BY_SUPABASE_AUTH'
+
             })
 
         if (dbError) {

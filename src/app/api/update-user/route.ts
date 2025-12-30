@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
     try {
-        const { id, cliq_id } = await request.json()
+        const { id, cliq_id, role, school } = await request.json()
 
         if (!id) {
             return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
@@ -24,9 +24,14 @@ export async function POST(request: Request) {
             }
         )
 
+        const updateData: any = {}
+        if (cliq_id !== undefined) updateData.cliq_id = cliq_id
+        if (role !== undefined) updateData.role = role
+        if (school !== undefined) updateData.school = school
+
         const { error } = await supabaseAdmin
             .from('users')
-            .update({ cliq_id: cliq_id })
+            .update(updateData)
             .eq('id', id)
 
         if (error) throw error
