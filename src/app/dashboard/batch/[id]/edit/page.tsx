@@ -71,7 +71,7 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
             const { data, error } = await supabase
                 .from('users')
                 .select('name')
-                .eq('role', 'SHO')
+                .in('role', ['SHO', 'SSHO'])
                 .eq('school', school)
 
             if (data) setAvailableSHOs(data)

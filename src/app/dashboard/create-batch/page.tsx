@@ -84,7 +84,7 @@ export default function CreateBatchPage() {
             const { data, error } = await supabase
                 .from('users')
                 .select('name')
-                .eq('role', 'SHO')
+                .in('role', ['SHO', 'SSHO'])
                 .eq('school', school)
 
             if (data) setAvailableSHOs(data)
