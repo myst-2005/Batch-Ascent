@@ -146,6 +146,7 @@ export default function AdminUsersPage() {
                                 <th style={{ padding: '1rem' }}>Email</th>
                                 <th style={{ padding: '1rem' }}>Role</th>
                                 <th style={{ padding: '1rem' }}>School</th>
+                                <th style={{ padding: '1rem' }}>Sales ID</th>
                                 <th style={{ padding: '1rem' }}>Cliq ID</th>
                                 <th style={{ padding: '1rem' }}>Actions</th>
                             </tr>
@@ -186,6 +187,19 @@ export default function AdminUsersPage() {
                                             ))}
                                         </select>
                                     </td>
+                                    <td style={{ padding: '1rem' }}>
+                                        <input
+                                            type="text"
+                                            className="input"
+                                            value={user.sales_id || ''}
+                                            onChange={(e) => {
+                                                const newId = e.target.value
+                                                setUsers(users.map(u => u.id === user.id ? { ...u, sales_id: newId } : u))
+                                            }}
+                                            style={{ padding: '0.25rem', fontSize: '0.875rem', width: '100px' }}
+                                            placeholder="-"
+                                        />
+                                    </td>
                                     <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{user.cliq_id || '-'}</td>
                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <button
@@ -199,7 +213,8 @@ export default function AdminUsersPage() {
                                                         body: JSON.stringify({
                                                             id: user.id,
                                                             role: user.role,
-                                                            school: user.school
+                                                            school: user.school,
+                                                            sales_id: user.sales_id
                                                         })
                                                     })
 

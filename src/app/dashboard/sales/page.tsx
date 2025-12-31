@@ -39,7 +39,55 @@ export default function SalesDashboard() {
 
     useEffect(() => {
         if (userSchool) fetchStats()
-    }, [userSchool, userRole]) // Re-fetch stats when school/role is available
+    }, [userSchool, userRole, salesId]) // Re-fetch stats when school/role/salesId is available
+
+    // Real-time subscription for User Profile updates (specifically Sales ID)
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user) {
+                // Initial fetch to ensure we have latest data
+                const { data: userData } = await supabase
+                    .from('users')
+                    .select('sales_id')
+                    .eq('id', user.id)
+                    .single()
+
+                if (userData && userData.sales_id && userData.sales_id !== salesId) {
+                    setSalesId(userData.sales_id)
+                    localStorage.setItem('salesId', userData.sales_id)
+                }
+
+                // Subscribe to changes
+                const channel = supabase
+                    .channel('user-profile-updates')
+                    .on(
+                        'postgres_changes',
+                        {
+                            event: 'UPDATE',
+                            schema: 'public',
+                            table: 'users',
+                            filter: `id=eq.${user.id}`
+                        },
+                        (payload) => {
+                            const newSalesId = payload.new.sales_id
+                            if (newSalesId && newSalesId !== salesId) {
+                                console.log('Realtime update: Sales ID changed to', newSalesId)
+                                setSalesId(newSalesId)
+                                localStorage.setItem('salesId', newSalesId)
+                            }
+                        }
+                    )
+                    .subscribe()
+
+                return () => {
+                    supabase.removeChannel(channel)
+                }
+            }
+        }
+
+        fetchUserProfile()
+    }, [])
 
     const fetchBatches = async () => {
         try {
