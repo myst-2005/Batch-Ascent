@@ -24,14 +24,24 @@ export default function BatchList() {
     const [now, setNow] = useState(new Date())
     const [filterCourse, setFilterCourse] = useState('All')
     const [filterMode, setFilterMode] = useState('All')
+    const [filterSchool, setFilterSchool] = useState('All')
     const [sortBy, setSortBy] = useState<'Date' | 'Filling'>('Date')
+    const [userRole, setUserRole] = useState<string | null>(null)
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setUserRole(localStorage.getItem('userRole'))
+        }
+    }, [])
 
     const uniqueCourses = Array.from(new Set(batches.map(b => b.course))).sort()
+    const uniqueSchools = Array.from(new Set(batches.map(b => b.school || ''))).filter(Boolean).sort()
 
     const filteredBatches = batches
         .filter(batch => {
             if (filterCourse !== 'All' && batch.course !== filterCourse) return false
             if (filterMode !== 'All' && (batch.mode || 'Offline') !== filterMode) return false
+            if (filterSchool !== 'All' && batch.school !== filterSchool) return false
             return true
         })
         .sort((a, b) => {
@@ -76,6 +86,9 @@ export default function BatchList() {
                 if (userRole === 'SHO' && userName) {
                     query = query.eq('sho_name', userName)
                 }
+            } else {
+                // For SuperUser, we fetch all, and client-side filter handles the School dropdown.
+                // Or we could enhance query, but client-side is fine for dashboard list usually.
             }
 
             const { data, error } = await query
@@ -151,6 +164,23 @@ export default function BatchList() {
                     </select>
                 </div>
 
+                {(userRole === 'ADMIN' || userRole === 'CEO') && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by School</label>
+                        <select
+                            className="input"
+                            value={filterSchool}
+                            onChange={(e) => setFilterSchool(e.target.value)}
+                            style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                        >
+                            <option value="All">All Schools</option>
+                            {uniqueSchools.map(school => (
+                                <option key={school} value={school}>{school}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Sort By</label>
                     <select
@@ -167,7 +197,7 @@ export default function BatchList() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Actions</label>
                     <button
-                        onClick={() => { setFilterCourse('All'); setFilterMode('All'); setSortBy('Date'); }}
+                        onClick={() => { setFilterCourse('All'); setFilterMode('All'); setFilterSchool('All'); setSortBy('Date'); }}
                         className="btn btn-secondary"
                         style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
                     >

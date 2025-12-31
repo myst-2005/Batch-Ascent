@@ -26,6 +26,7 @@ export default function ProjectOverview() {
         totalBatches: 0,
         totalStudents: 0,
         batchesPerCourse: [] as { name: string, count: number }[],
+        batchesPerSchool: [] as { name: string, count: number }[],
         mostPopularCourse: '',
         enrollmentRate: 0,
         topSalesPerson: '',
@@ -45,7 +46,7 @@ export default function ProjectOverview() {
             // 1. Fetch Batches
             let batchQuery = supabase.from('batches').select('id, course, strength, school')
 
-            if (role === 'CEO') {
+            if (role === 'CEO' || role === 'ADMIN') {
                 if (schoolFilter !== 'All Schools') {
                     batchQuery = batchQuery.eq('school', schoolFilter)
                 }
@@ -58,6 +59,8 @@ export default function ProjectOverview() {
 
             const { data: batchesData, error: batchError } = await batchQuery
             if (batchError) throw batchError
+
+            // ... (rest of filtering) ...
 
             // 2. Fetch Sales References (Users)
             const { data: usersData, error: usersError } = await supabase
@@ -113,16 +116,23 @@ export default function ProjectOverview() {
         // Batches per course
         const courses: Record<string, number> = {}
         const studentsPerCourse: Record<string, number> = {}
+        const schools: Record<string, number> = {}
 
         batchData.forEach(b => {
             courses[b.course] = (courses[b.course] || 0) + 1
             studentsPerCourse[b.course] = (studentsPerCourse[b.course] || 0) + (b.enrolled_count || 0)
+            if (b.school) schools[b.school] = (schools[b.school] || 0) + 1
         })
 
         const batchesPerCourseArg = Object.entries(courses).map(([name, count]) => ({
             name,
             count
         }))
+
+        const batchesPerSchoolArg = Object.entries(schools).map(([name, count]) => ({
+            name,
+            count
+        })).sort((a, b) => b.count - a.count)
 
         // Most popular course
         let mostPopular = ''
@@ -159,6 +169,7 @@ export default function ProjectOverview() {
             totalBatches,
             totalStudents,
             batchesPerCourse: batchesPerCourseArg,
+            batchesPerSchool: batchesPerSchoolArg,
             mostPopularCourse: mostPopular,
             enrollmentRate: totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0,
             topSalesPerson: topSalesPersonName,
@@ -175,7 +186,7 @@ export default function ProjectOverview() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <h2 className="text-2xl font-bold" style={{ color: 'var(--primary)', margin: 0 }}>Dashboard Overview</h2>
 
-                {userRole === 'CEO' && (
+                {(userRole === 'CEO' || userRole === 'ADMIN') && (
                     <select
                         value={selectedSchool}
                         onChange={(e) => setSelectedSchool(e.target.value)}
@@ -282,10 +293,31 @@ export default function ProjectOverview() {
 
             </div>
 
+            {/* School Distribution Chart for Admin/CEO */}
+            {(userRole === 'ADMIN' || userRole === 'CEO') && (
+                <div className="card" style={{ marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Batches per School</h3>
+                    <div style={{ height: '300px', width: '100%' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={stats.batchesPerSchool}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                    cursor={{ fill: 'var(--surface-hover)' }}
+                                />
+                                <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
+
             {/* Sales Performance Row */}
-            {(userRole === 'CEO' || userRole === 'SALES_HEAD') && (
+            {(userRole === 'CEO' || userRole === 'SALES_HEAD' || userRole === 'ADMIN') && (
                 <div className="card">
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Start Sales Performance (Top 5)</h3>
+                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Star Sales Performance (Top 5)</h3>
                     <div style={{ height: '300px', width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={stats.salesPerformance} layout="vertical" margin={{ left: 20 }}>

@@ -12,12 +12,8 @@ export default function DashboardPage() {
 
     if (!role) return null
 
-    // Project Lead and CEO get the Analytics Dashboard
-    if (role === 'PROJECT_LEAD' || role === 'CEO') {
-        return <ProjectOverview />
-    }
-
-    // Others (SHO, SSHO, Admin, Academic Lead, Sales Head) get Batch List
+    // Everyone gets the Batch List as the main Overview now.
+    // Detailed analytics are moved to the 'Status' page.
     return (
         <div>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Overview</h2>
