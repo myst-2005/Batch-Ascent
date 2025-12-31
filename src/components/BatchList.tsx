@@ -22,6 +22,27 @@ export default function BatchList() {
     const [batches, setBatches] = useState<Batch[]>([])
     const [loading, setLoading] = useState(true)
     const [now, setNow] = useState(new Date())
+    const [filterCourse, setFilterCourse] = useState('All')
+    const [filterMode, setFilterMode] = useState('All')
+    const [sortBy, setSortBy] = useState<'Date' | 'Filling'>('Date')
+
+    const uniqueCourses = Array.from(new Set(batches.map(b => b.course))).sort()
+
+    const filteredBatches = batches
+        .filter(batch => {
+            if (filterCourse !== 'All' && batch.course !== filterCourse) return false
+            if (filterMode !== 'All' && (batch.mode || 'Offline') !== filterMode) return false
+            return true
+        })
+        .sort((a, b) => {
+            if (sortBy === 'Date') {
+                return new Date(a.start_date).getTime() - new Date(b.start_date).getTime()
+            } else {
+                const fillA = (a.enrolled_count || 0) / (a.strength || 1)
+                const fillB = (b.enrolled_count || 0) / (b.strength || 1)
+                return fillB - fillA // High to Low
+            }
+        })
 
     useEffect(() => {
         const timer = setInterval(() => setNow(new Date()), 1000)
@@ -98,124 +119,182 @@ export default function BatchList() {
     if (loading) return <div className="animate-pulse">Loading batches...</div>
 
     return (
-        <div className="animate-fade-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            {batches.map((batch) => (
-                <div
-                    key={batch.id}
-                    className="card"
-                    onClick={() => router.push(`/dashboard/batch/${batch.id}`)}
-                    style={{ transition: 'all 0.2s', cursor: 'pointer' }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-4px)'
-                        e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'translateY(0)'
-                        e.currentTarget.style.boxShadow = ''
-                    }}
-                >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                        <div>
-                            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{batch.name}</h3>
-                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'var(--surface-hover)', borderRadius: '0.25rem', color: 'var(--text-secondary)' }}>{batch.id}</span>
-                                {batch.mode && (
-                                    <span style={{
-                                        fontSize: '0.75rem',
-                                        padding: '0.25rem 0.5rem',
-                                        borderRadius: '0.25rem',
-                                        background: batch.mode === 'Online' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                                        color: batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)',
-                                        border: `1px solid ${batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)'}`
-                                    }}>
-                                        {batch.mode}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/dashboard/batch/${batch.id}/edit`)
-                                }}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: 'var(--text-secondary)',
-                                    padding: '0.25rem',
-                                    borderRadius: '0.25rem',
-                                    transition: 'background 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                title="Edit Batch"
-                            >
-                                <Edit size={18} />
-                            </button>
-                        )}
-                    </div>
+        <div className="animate-fade-in">
+            {/* Filter and Sort Controls */}
+            <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Course</label>
+                    <select
+                        className="input"
+                        value={filterCourse}
+                        onChange={(e) => setFilterCourse(e.target.value)}
+                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                        <option value="All">All Courses</option>
+                        {uniqueCourses.map(course => (
+                            <option key={course} value={course}>{course}</option>
+                        ))}
+                    </select>
+                </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                            <BookOpen size={16} />
-                            <span>{batch.course}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                            <div style={{ position: 'relative', width: '24px', height: '24px' }}>
-                                <svg width="24" height="24" viewBox="0 0 36 36">
-                                    <path
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none"
-                                        stroke="#e2e8f0"
-                                        strokeWidth="4"
-                                    />
-                                    <path
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                        fill="none"
-                                        stroke="var(--primary)"
-                                        strokeWidth="4"
-                                        strokeDasharray={`${((batch.enrolled_count || 0) / (batch.strength || 1)) * 100}, 100`}
-                                    />
-                                </svg>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Mode</label>
+                    <select
+                        className="input"
+                        value={filterMode}
+                        onChange={(e) => setFilterMode(e.target.value)}
+                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                        <option value="All">All Modes</option>
+                        <option value="Online">Online</option>
+                        <option value="Offline">Offline</option>
+                    </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Sort By</label>
+                    <select
+                        className="input"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as 'Date' | 'Filling')}
+                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                        <option value="Date">Start Date</option>
+                        <option value="Filling">Batch Filling (High to Low)</option>
+                    </select>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Actions</label>
+                    <button
+                        onClick={() => { setFilterCourse('All'); setFilterMode('All'); setSortBy('Date'); }}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                    >
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                {filteredBatches.map((batch) => (
+                    <div
+                        key={batch.id}
+                        className="card"
+                        onClick={() => router.push(`/dashboard/batch/${batch.id}`)}
+                        style={{ transition: 'all 0.2s', cursor: 'pointer' }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-4px)'
+                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)'
+                            e.currentTarget.style.boxShadow = ''
+                        }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{batch.name}</h3>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                    <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'var(--surface-hover)', borderRadius: '0.25rem', color: 'var(--text-secondary)' }}>{batch.id}</span>
+                                    {batch.mode && (
+                                        <span style={{
+                                            fontSize: '0.75rem',
+                                            padding: '0.25rem 0.5rem',
+                                            borderRadius: '0.25rem',
+                                            background: batch.mode === 'Online' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                            color: batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)',
+                                            border: `1px solid ${batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)'}`
+                                        }}>
+                                            {batch.mode}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
-                            <span>{batch.enrolled_count || 0} / {batch.strength} Students</span>
+                            {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        router.push(`/dashboard/batch/${batch.id}/edit`)
+                                    }}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-secondary)',
+                                        padding: '0.25rem',
+                                        borderRadius: '0.25rem',
+                                        transition: 'background 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    title="Edit Batch"
+                                >
+                                    <Edit size={18} />
+                                </button>
+                            )}
                         </div>
-                        {batch.school && (
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
                                 <BookOpen size={16} />
-                                <span>{batch.school}</span>
+                                <span>{batch.course}</span>
                             </div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                            <Calendar size={16} />
-                            <span>{new Date(batch.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                <div style={{ position: 'relative', width: '24px', height: '24px' }}>
+                                    <svg width="24" height="24" viewBox="0 0 36 36">
+                                        <path
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none"
+                                            stroke="#e2e8f0"
+                                            strokeWidth="4"
+                                        />
+                                        <path
+                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                            fill="none"
+                                            stroke="var(--primary)"
+                                            strokeWidth="4"
+                                            strokeDasharray={`${((batch.enrolled_count || 0) / (batch.strength || 1)) * 100}, 100`}
+                                        />
+                                    </svg>
+                                </div>
+                                <span>{batch.enrolled_count || 0} / {batch.strength} Students</span>
+                            </div>
+                            {batch.school && (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                    <BookOpen size={16} />
+                                    <span>{batch.school}</span>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                <Calendar size={16} />
+                                <span>{new Date(batch.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            </div>
                         </div>
+
+                        {/* Countdown Timer */}
+                        <div style={{
+                            marginTop: '1.5rem',
+                            padding: '1rem',
+                            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
+                            borderRadius: '0.75rem',
+                            color: 'white',
+                            textAlign: 'center',
+                            boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+                        }}>
+                            <div style={{ fontSize: '0.75rem', opacity: 0.9, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                <Clock size={14} />
+                                Orientation In
+                            </div>
+                            <div style={{ fontSize: '1.5rem', fontWeight: '700', fontFamily: 'monospace' }}>
+                                {getCountdown(batch.start_date).text}
+                            </div>
+                        </div>
+
+
                     </div>
-
-                    {/* Countdown Timer */}
-                    <div style={{
-                        marginTop: '1.5rem',
-                        padding: '1rem',
-                        background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-                        borderRadius: '0.75rem',
-                        color: 'white',
-                        textAlign: 'center',
-                        boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
-                    }}>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.9, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                            <Clock size={14} />
-                            Orientation In
-                        </div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: '700', fontFamily: 'monospace' }}>
-                            {getCountdown(batch.start_date).text}
-                        </div>
-                    </div>
-
-
-                </div>
-            ))}
+                ))}
+            </div>
         </div>
     )
 }
