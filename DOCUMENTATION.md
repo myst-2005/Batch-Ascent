@@ -101,7 +101,7 @@
 
 ### Roles
 - **ADMIN**: Full System Access.
-- **SHO / SSHO**: Batch & Student Verification.
+- **SHO (Student Happiness Officer) / SSHO (Senior SHO)**: Batch & Student Verification. [See Detailed Guide](./USER_GUIDE_ACADEMIC_OPS.md)
 - **ACADEMIC_LEAD**: Batch Creation & Onboarding.
 - **SALES / SALES_HEAD**: Enrollment Tracking.
 - **PROJECT_LEAD**: Project Management.

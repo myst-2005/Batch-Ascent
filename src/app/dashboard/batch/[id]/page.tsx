@@ -97,17 +97,35 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
     const fetchStudents = async () => {
         try {
-            // 1. Fetch enrollments
+            // 1. Fetch enrollments WITHOUT JOIN constraints
             const { data: enrollments, error: enrollError } = await supabase
                 .from('student_batches')
-                .select(`
-                    *,
-                    sales_person:users!student_batches_sales_id_fkey(name, phone)
-                `)
+                .select('*')
                 .eq('batch_id', id)
                 .order('linked_at', { ascending: false })
 
             if (enrollError) throw enrollError
+
+            // Fetch Sales Persons for displayed IDs manual join
+            const salesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            let salesMap = new Map()
+
+            if (salesIds.length > 0) {
+                const { data: salesUsers } = await supabase
+                    .from('users')
+                    .select('id, name, phone, sales_id')
+                    .or(`sales_id.in.(${salesIds.join(',')}),id.in.(${salesIds.join(',')})`)
+
+                salesUsers?.forEach((u: any) => {
+                    if (u.sales_id) salesMap.set(u.sales_id, u)
+                    if (u.id) salesMap.set(u.id, u)
+                })
+            }
+
+            const enrollmentsWithSales = enrollments?.map((e: any) => ({
+                ...e,
+                sales_person: salesMap.get(e.sales_id)
+            }))
 
             // 2. Fetch official students to check onboarding status
             const { data: officialStudents, error: officialError } = await supabase
@@ -118,9 +136,9 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             if (officialError) throw officialError
 
             // 3. Merge data
-            const officialMap = new Map(officialStudents?.map(s => [s.email, s.student_id]) || [])
+            const officialMap = new Map(officialStudents?.map((s: any) => [s.email, s.student_id]) || [])
 
-            const mergedStudents = (enrollments || []).map(s => ({
+            const mergedStudents = (enrollmentsWithSales || []).map((s: any) => ({
                 ...s,
                 onboarding_completed: officialMap.has(s.student_email),
                 official_student_id: officialMap.get(s.student_email)
