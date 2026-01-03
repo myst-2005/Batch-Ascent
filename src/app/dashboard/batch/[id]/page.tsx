@@ -225,6 +225,61 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
+    const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
+    const [tempEmail, setTempEmail] = useState('')
+
+    const startEditingEmail = (student: Student) => {
+        setEditingStudentId(student.id)
+        setTempEmail(student.student_email)
+    }
+
+    const cancelEditingEmail = () => {
+        setEditingStudentId(null)
+        setTempEmail('')
+    }
+
+    const saveEmail = async (student: Student) => {
+        if (!tempEmail || !tempEmail.includes('@')) {
+            alert('Please enter a valid email')
+            return
+        }
+        if (tempEmail === student.student_email) {
+            cancelEditingEmail()
+            return
+        }
+
+        try {
+            // 1. Update student_batches (Source of Truth for enrollment)
+            const { error: batchError } = await supabase
+                .from('student_batches')
+                .update({ student_email: tempEmail })
+                .eq('id', student.id)
+
+            if (batchError) throw batchError
+
+            // 2. If onboarded, update students table (Official Record)
+            if (student.onboarding_completed) {
+                const { error: studentError } = await supabase
+                    .from('students')
+                    .update({ email: tempEmail })
+                    .eq('email', student.student_email)
+                    .eq('batch_id', id)
+
+                if (studentError) throw studentError
+            }
+
+            // Update local state
+            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, student_email: tempEmail } : s))
+            setEditingStudentId(null)
+            setTempEmail('')
+            alert('Email updated successfully')
+
+        } catch (error: any) {
+            console.error('Error updating email:', error)
+            alert('Failed to update email: ' + error.message)
+        }
+    }
+
     if (loading) return <div>Loading...</div>
 
     if (!batch) return <div>Batch not found</div>
@@ -353,9 +408,49 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                         {student.student_name || 'N/A'}
                                     </div>
                                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '0.125rem', marginTop: '0.25rem' }}>
-                                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-                                            <Mail size={12} strokeWidth={2} /> {student.student_email}
-                                        </span>
+
+                                        {/* EMAIL FIELD WITH EDIT */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', minHeight: '1.5rem' }}>
+                                            <Mail size={12} strokeWidth={2} />
+                                            {editingStudentId === student.id ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <input
+                                                        type="email"
+                                                        value={tempEmail}
+                                                        onChange={(e) => setTempEmail(e.target.value)}
+                                                        style={{
+                                                            fontSize: '0.85rem', padding: '0.1rem 0.25rem',
+                                                            border: '1px solid var(--primary)', borderRadius: '0.25rem',
+                                                            width: '200px'
+                                                        }}
+                                                        autoFocus
+                                                    />
+                                                    <button onClick={() => saveEmail(student)} style={{ color: 'var(--green-600)', background: 'none', border: 'none', cursor: 'pointer' }} title="Save">
+                                                        <CheckCircle size={14} />
+                                                    </button>
+                                                    <button onClick={cancelEditingEmail} style={{ color: 'var(--red-600)', background: 'none', border: 'none', cursor: 'pointer' }} title="Cancel">
+                                                        <CheckCircle size={14} style={{ transform: 'rotate(45deg)' }} /> {/* Using CheckCircle as X for now, or fetch X from imports */}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <span className="group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    {student.student_email}
+                                                    <button
+                                                        onClick={() => startEditingEmail(student)}
+                                                        style={{
+                                                            opacity: 0,
+                                                            transition: 'opacity 0.2s',
+                                                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)'
+                                                        }}
+                                                        className="group-hover:opacity-100"
+                                                        title="Edit Email"
+                                                    >
+                                                        <RefreshCw size={12} style={{ transform: 'rotate(90deg)' }} /> {/* Using Refresh as edit placeholder if needed or Pencil */}
+                                                    </button>
+                                                </span>
+                                            )}
+                                        </div>
+
                                         {student.student_phone && (
                                             <span style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
                                                 <Phone size={12} strokeWidth={2} /> {student.student_phone}
@@ -389,10 +484,10 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                 {/* Vertical Divider */}
                                 <div style={{ width: '1px', alignSelf: 'stretch', background: 'var(--border)', margin: '0.5rem 0' }} />
 
-                                {/* 4. Status & Actions (Right) */}
+                                {/* 4. Status & Actions (Right) - UPDATED WORKFLOW */}
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', minWidth: '140px' }}>
 
-                                    {/* Verification Badge */}
+                                    {/* Verification Check */}
                                     {!(student.verified_at || student.status === 'Verified') ? (
                                         <div style={{
                                             padding: '0.25rem 0.75rem', borderRadius: '9999px',
@@ -405,61 +500,78 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                         </div>
                                     ) : (
                                         <>
-                                            {/* Onboarding Badge */}
-                                            <div style={{
-                                                padding: '0.25rem 0.75rem', borderRadius: '9999px',
-                                                fontSize: '0.75rem', fontWeight: '600',
-                                                background: student.onboarding_completed ? '#dcfce7' : '#fef9c3',
-                                                color: student.onboarding_completed ? '#166534' : '#854d0e',
-                                                border: `1px solid ${student.onboarding_completed ? '#bbf7d0' : '#fde047'}`,
-                                                display: 'flex', alignItems: 'center', gap: '0.375rem'
-                                            }}>
-                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: student.onboarding_completed ? '#22c55e' : '#eab308' }} />
-                                                {student.onboarding_completed ? 'Onboarded' : 'Pending Onboard'}
-                                            </div>
+                                            {/* Workflow: Verified -> To Call -> Pending Onboard -> Onboarded */}
 
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.125rem' }}>
-                                                {/* Toggle Text Link */}
-                                                <button
-                                                    onClick={() => toggleOnboarding(student, !!student.onboarding_completed)}
-                                                    style={{
-                                                        fontSize: '0.75rem', fontWeight: '500',
-                                                        color: 'var(--text-tertiary)', textDecoration: 'underline',
-                                                        background: 'none', border: 'none', cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {student.onboarding_completed ? 'Undo' : 'Mark Done'}
-                                                </button>
+                                            {/* 1. NOT CALLED YET */}
+                                            {!student.called_at ? (
+                                                <>
+                                                    <div style={{
+                                                        padding: '0.25rem 0.75rem', borderRadius: '9999px',
+                                                        fontSize: '0.75rem', fontWeight: '600',
+                                                        background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe',
+                                                        display: 'flex', alignItems: 'center', gap: '0.375rem'
+                                                    }}>
+                                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#3b82f6' }} />
+                                                        To Call
+                                                    </div>
 
-                                                {/* Call Button */}
-                                                {student.onboarding_completed && (
-                                                    student.called_at ? (
+                                                    <button
+                                                        onClick={() => handleCallStudent(student.id)}
+                                                        className="hover:scale-105 active:scale-95"
+                                                        style={{
+                                                            fontSize: '0.75rem', fontWeight: '600',
+                                                            color: 'white', background: 'var(--primary)',
+                                                            border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                                            boxShadow: '0 2px 4px rgba(var(--primary-rgb), 0.2)',
+                                                            transition: 'transform 0.1s'
+                                                        }}
+                                                    >
+                                                        <Phone size={12} /> Call Student
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                /* 2. CALLED, EITHER PENDING OR ONBOARDED */
+                                                <>
+                                                    {/* Badge */}
+                                                    <div style={{
+                                                        padding: '0.25rem 0.75rem', borderRadius: '9999px',
+                                                        fontSize: '0.75rem', fontWeight: '600',
+                                                        background: student.onboarding_completed ? '#dcfce7' : '#fef9c3',
+                                                        color: student.onboarding_completed ? '#166534' : '#854d0e',
+                                                        border: `1px solid ${student.onboarding_completed ? '#bbf7d0' : '#fde047'}`,
+                                                        display: 'flex', alignItems: 'center', gap: '0.375rem'
+                                                    }}>
+                                                        <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: student.onboarding_completed ? '#22c55e' : '#eab308' }} />
+                                                        {student.onboarding_completed ? 'Onboarded' : 'Pending Onboard'}
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                                        {/* Called Date */}
                                                         <div style={{
                                                             fontSize: '0.7rem', color: 'var(--text-secondary)',
                                                             display: 'flex', alignItems: 'center', gap: '0.25rem',
                                                             background: 'var(--surface-active)', padding: '0.25rem 0.5rem', borderRadius: '0.25rem'
                                                         }}>
                                                             <Phone size={12} />
-                                                            Called {new Date(student.called_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', hour: 'numeric', minute: 'numeric', hour12: true })}
+                                                            Called {new Date(student.called_at).toLocaleString('en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                                                         </div>
-                                                    ) : (
+
+                                                        {/* Action: Mark Done or Undo */}
                                                         <button
-                                                            onClick={() => handleCallStudent(student.id)}
-                                                            className="hover:scale-105 active:scale-95"
+                                                            onClick={() => toggleOnboarding(student, !!student.onboarding_completed)}
                                                             style={{
-                                                                fontSize: '0.75rem', fontWeight: '600',
-                                                                color: 'white', background: 'var(--primary)',
-                                                                border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
-                                                                boxShadow: '0 2px 4px rgba(var(--primary-rgb), 0.2)',
-                                                                transition: 'transform 0.1s'
+                                                                fontSize: '0.75rem', fontWeight: '500',
+                                                                color: 'var(--text-tertiary)', textDecoration: 'underline',
+                                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                                marginTop: '0.25rem'
                                                             }}
                                                         >
-                                                            <Phone size={12} /> Call Student
+                                                            {student.onboarding_completed ? 'Undo' : 'Mark Onboarded'}
                                                         </button>
-                                                    )
-                                                )}
-                                            </div>
+                                                    </div>
+                                                </>
+                                            )}
                                         </>
                                     )}
                                 </div>
