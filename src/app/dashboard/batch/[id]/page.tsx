@@ -140,7 +140,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             const mergedStudents = (enrollmentsWithSales || []).map((s: any) => ({
                 ...s,
-                onboarding_completed: officialMap.has(s.student_email),
+                onboarding_completed: officialMap.has(s.student_email) || s.onboarding_completed,
                 official_student_id: officialMap.get(s.student_email)
             }))
 
