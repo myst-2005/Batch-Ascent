@@ -15,6 +15,9 @@ interface Student {
     sales_id?: string
     verified_at?: string
     status?: string
+    sales_person?: {
+        name: string
+    }
 }
 
 interface Batch {
@@ -176,14 +179,38 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
 
     const fetchStudents = async () => {
         try {
-            const { data, error } = await supabase
+            // 1. Fetch enrollments
+            const { data: enrollments, error } = await supabase
                 .from('student_batches')
                 .select('*')
                 .eq('batch_id', id)
                 .order('linked_at', { ascending: false })
 
             if (error) throw error
-            setStudents(data || [])
+
+            // 2. Fetch Sales Persons manually
+            const salesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            let salesMap = new Map()
+
+            if (salesIds.length > 0) {
+                const { data: salesUsers } = await supabase
+                    .from('users')
+                    .select('id, name, sales_id')
+                    .or(`sales_id.in.(${salesIds.join(',')}),id.in.(${salesIds.join(',')})`)
+
+                salesUsers?.forEach((u: any) => {
+                    if (u.sales_id) salesMap.set(u.sales_id, u)
+                    if (u.id) salesMap.set(u.id, u)
+                })
+            }
+
+            // 3. Map Name to Enrollment
+            const studentsWithSales = enrollments?.map((e: any) => ({
+                ...e,
+                sales_person: salesMap.get(e.sales_id)
+            }))
+
+            setStudents(studentsWithSales || [])
         } catch (error) {
             console.error('Error fetching students:', error)
         } finally {
@@ -486,9 +513,9 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                             <Mail size={14} />
                                             {student.student_email}
                                         </div>
-                                        {student.sales_id && (
+                                        {(student.sales_id || student.sales_person) && (
                                             <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>
-                                                Enrolled by: {student.sales_id}
+                                                Enrolled by: {student.sales_person?.name || student.sales_id}
                                             </div>
                                         )}
                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)' }}>
