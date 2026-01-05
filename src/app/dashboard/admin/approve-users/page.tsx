@@ -46,15 +46,28 @@ export default function ApproveUsersPage() {
         if (!confirm(`Approve ${user.email} as ${user.selectedRole} in ${user.selectedSchool}?`)) return
 
         try {
-            const { error } = await supabase
-                .from('users')
-                .update({
+            const { data: { session } } = await supabase.auth.getSession()
+
+            // Utilise API pour contourner RLS si necessaire et assurer que SUB_ADMIN peut le faire
+            const response = await fetch('/api/update-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token}`
+                },
+                body: JSON.stringify({
+                    id: user.id,
                     role: user.selectedRole,
                     school: user.selectedSchool
                 })
-                .eq('id', user.id)
+            })
 
-            if (error) throw error
+            const data = await response.json()
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to approve user')
+            }
+
             alert('User approved and role assigned.')
             fetchPendingUsers()
         } catch (error: any) {

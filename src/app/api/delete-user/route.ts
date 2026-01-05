@@ -47,14 +47,14 @@ export async function POST(request: Request) {
             }
         )
 
-        // Check if user is admin using Service Role (bypasses RLS issues for the check)
+        // Check if user is admin or sub_admin
         const { data: userData, error: roleError } = await supabaseAdmin
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single()
 
-        if (roleError || userData?.role !== 'ADMIN') {
+        if (roleError || (userData?.role !== 'ADMIN' && userData?.role !== 'SUB_ADMIN')) {
             console.log("DEBUG: Permission Denied. User ID:", user.id);
             console.log("DEBUG: Role Error:", roleError);
             console.log("DEBUG: User Role Data:", userData);

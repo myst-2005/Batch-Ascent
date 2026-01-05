@@ -34,8 +34,21 @@ export default function BatchList() {
         }
     }, [])
 
-    const uniqueCourses = Array.from(new Set(batches.map(b => b.course))).sort()
+    // 1. Get unique schools from ALL batches (always visible options)
     const uniqueSchools = Array.from(new Set(batches.map(b => b.school || ''))).filter(Boolean).sort()
+
+    // 2. Get unique courses based on the SELECTED School
+    // If School is 'All', show all courses. If 'Tech School', only show Tech School courses.
+    const uniqueCourses = Array.from(new Set(
+        batches
+            .filter(b => filterSchool === 'All' || b.school === filterSchool)
+            .map(b => b.course)
+    )).sort()
+
+    // 3. Reset Course filter when School changes to prevent invalid states
+    useEffect(() => {
+        setFilterCourse('All')
+    }, [filterSchool])
 
     const filteredBatches = batches
         .filter(batch => {
@@ -135,35 +148,8 @@ export default function BatchList() {
         <div className="animate-fade-in">
             {/* Filter and Sort Controls */}
             <div className="card" style={{ marginBottom: '1.5rem', padding: '1rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Course</label>
-                    <select
-                        className="input"
-                        value={filterCourse}
-                        onChange={(e) => setFilterCourse(e.target.value)}
-                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
-                    >
-                        <option value="All">All Courses</option>
-                        {uniqueCourses.map(course => (
-                            <option key={course} value={course}>{course}</option>
-                        ))}
-                    </select>
-                </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Mode</label>
-                    <select
-                        className="input"
-                        value={filterMode}
-                        onChange={(e) => setFilterMode(e.target.value)}
-                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
-                    >
-                        <option value="All">All Modes</option>
-                        <option value="Online">Online</option>
-                        <option value="Offline">Offline</option>
-                    </select>
-                </div>
-
+                {/* 1. Filter by School (First, but conditional) */}
                 {(userRole === 'ADMIN' || userRole === 'CEO') && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by School</label>
@@ -181,6 +167,38 @@ export default function BatchList() {
                     </div>
                 )}
 
+                {/* 2. Filter by Mode */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Mode</label>
+                    <select
+                        className="input"
+                        value={filterMode}
+                        onChange={(e) => setFilterMode(e.target.value)}
+                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                        <option value="All">All Modes</option>
+                        <option value="Online">Online</option>
+                        <option value="Offline">Offline</option>
+                    </select>
+                </div>
+
+                {/* 3. Filter by Course */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Filter by Course</label>
+                    <select
+                        className="input"
+                        value={filterCourse}
+                        onChange={(e) => setFilterCourse(e.target.value)}
+                        style={{ padding: '0.5rem', fontSize: '0.875rem' }}
+                    >
+                        <option value="All">All Courses</option>
+                        {uniqueCourses.map(course => (
+                            <option key={course} value={course}>{course}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* 4. Sort By */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Sort By</label>
                     <select
@@ -194,6 +212,7 @@ export default function BatchList() {
                     </select>
                 </div>
 
+                {/* 5. Actions */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                     <label style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Actions</label>
                     <button

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { UserPlus, Trash2 } from 'lucide-react'
+import { UserPlus, Trash2, Filter } from 'lucide-react'
 import { SCHOOLS, ROLES } from '@/lib/constants'
 
 export default function AdminUsersPage() {
@@ -13,6 +13,10 @@ export default function AdminUsersPage() {
         role: 'SHO',
         school: SCHOOLS[0]
     })
+
+    // Filter states
+    const [filterSchool, setFilterSchool] = useState('ALL')
+    const [filterRole, setFilterRole] = useState('ALL')
 
     useEffect(() => {
         fetchUsers()
@@ -85,6 +89,13 @@ export default function AdminUsersPage() {
         }
     }
 
+    // Apply filters
+    const filteredUsers = users.filter(user => {
+        const matchesSchool = filterSchool === 'ALL' || user.school === filterSchool
+        const matchesRole = filterRole === 'ALL' || user.role === filterRole
+        return matchesSchool && matchesRole
+    })
+
     return (
         <div className="animate-fade-in">
             <div className="card mb-8" style={{ marginBottom: '2rem' }}>
@@ -137,11 +148,42 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="card">
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Existing Users</h3>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Existing Users ({filteredUsers.length})</h3>
+
+                    {/* Filters */}
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Filter size={16} color="var(--text-secondary)" />
+                            <select
+                                className="input"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                                value={filterSchool}
+                                onChange={(e) => setFilterSchool(e.target.value)}
+                            >
+                                <option value="ALL">All Schools</option>
+                                {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <select
+                                className="input"
+                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+                                value={filterRole}
+                                onChange={(e) => setFilterRole(e.target.value)}
+                            >
+                                <option value="ALL">All Roles</option>
+                                {Object.values(ROLES).map(r => <option key={r} value={r}>{r}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
                 <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                         <thead>
                             <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                <th style={{ padding: '1rem', width: '50px' }}>Sl No</th>
                                 <th style={{ padding: '1rem' }}>Name</th>
                                 <th style={{ padding: '1rem' }}>Email</th>
                                 <th style={{ padding: '1rem' }}>Role</th>
@@ -152,8 +194,9 @@ export default function AdminUsersPage() {
                             </tr>
                         </thead>
                         <tbody>
-                            {users.map(user => (
+                            {filteredUsers.map((user, index) => (
                                 <tr key={user.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                    <td style={{ padding: '1rem', color: 'var(--text-tertiary)' }}>{index + 1}</td>
                                     <td style={{ padding: '1rem' }}>{user.name}</td>
                                     <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>{user.email}</td>
                                     <td style={{ padding: '1rem' }}>

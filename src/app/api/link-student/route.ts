@@ -73,8 +73,80 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Selected Sales Executive not found in database' }, { status: 400 })
         }
 
+        // 5. Fetch Batch Details for Code Generation
+        const { data: batch, error: batchFetchError } = await supabaseAdmin
+            .from('batches')
+            .select('school, course')
+            .eq('id', batch_id)
+            .single()
+
+        if (batchFetchError || !batch) {
+            return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
+        }
+
         const now = new Date().toISOString()
         const phoneInt = parseInt(student_phone.replace(/\D/g, ''))
+
+        // --- Student ID Generation Logic ---
+
+        // Mappings
+        const schoolCodes: Record<string, string> = {
+            "Tech School": "TS",
+            "Design School": "DS",
+            "Marketing School": "MS",
+            "Finance School": "FS"
+        }
+
+        const courseCodes: Record<string, string> = {
+            "Applied AI": "AA",
+            "N8N": "NN",
+            "Data Analytics": "DA",
+            "Python": "PY",
+            "Branding": "BR",
+            "UI/UX": "UX",
+            "Graphic Design": "GD",
+            "Video Editing": "VE",
+            "Social Media Mastery": "SM",
+            "Performance Marketing": "PM",
+            "Digital Marketing": "DM",
+            "Advanced Practical Accounting and Financial Intelligence": "AF",
+            "Advanced Taxation Course": "TX",
+            "HACA Scale Up": "SU",
+            "Tax Practitioner Bootcamp": "TB",
+            "NAME": "GEN"
+        }
+
+        const schoolCode = schoolCodes[batch.school] || "XX"
+        const courseCode = courseCodes[batch.course] || "YY"
+
+        // Get Sequence Number via RPC
+        const { data: rpcData, error: rpcError } = await supabaseAdmin
+            .rpc('increment_school_counter_sd', { p_school_code: schoolCode })
+
+        if (rpcError) {
+            throw new Error('Failed to generate student ID sequence: ' + rpcError.message)
+        }
+
+        console.log('DEBUG: RPC Response:', rpcData)
+
+        let seq = rpcData
+        // Handle object return (e.g., { seq: 123 }) which causes [object Object]
+        if (typeof rpcData === 'object' && rpcData !== null) {
+            if ('seq' in rpcData) {
+                // @ts-ignore
+                seq = rpcData.seq
+            } else if (Array.isArray(rpcData) && rpcData.length > 0) {
+                // Handle array return if logic changes to setof
+                // @ts-ignore
+                seq = rpcData[0].seq || rpcData[0]
+            }
+        }
+
+        // Pad sequence to 4 digits (e.g., 0005)
+        const paddedSeq = String(seq).padStart(4, "0")
+        const newStudentId = `${schoolCode}${courseCode}${paddedSeq}`
+
+        console.log(`Generated Student ID: ${newStudentId} for ${batch.school} - ${batch.course}`)
 
         // 5. Database Insertions
 
@@ -83,17 +155,19 @@ export async function POST(request: Request) {
             .from('students')
             .insert([
                 {
+                    student_id: newStudentId, // The generated ID
                     full_name: student_name,
                     email: student_email,
                     phone: isNaN(phoneInt) ? null : phoneInt,
-                    batch_id: batch_id
+                    batch_id: batch_id,
+                    school_code: schoolCode,
+                    course_code: courseCode
                 }
             ])
             .select()
             .single()
 
         if (studentError) {
-            // Ignore duplicate errors, otherwise throw
             if (!studentError.message.includes('duplicate') && !studentError.message.includes('unique')) {
                 throw new Error('Error creating student: ' + studentError.message)
             }
@@ -109,7 +183,7 @@ export async function POST(request: Request) {
                     student_email: student_email,
                     student_phone: student_phone,
                     batch_id: batch_id,
-                    sales_id: salesPerson.sales_id || salesPerson.id, // Prefer readable Sales ID, fallback to UUID if missing
+                    sales_id: salesPerson.sales_id, // STRICTLY using Sales ID string from users table
                     linked_at: now,
                     onboarding_completed: true,
                     verified_at: now,
@@ -139,7 +213,8 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            student: studentData || { status: 'Existing student linked' }
+            student: studentData || { status: 'Existing student linked', student_id: newStudentId },
+            generated_id: newStudentId
         })
 
     } catch (error: any) {

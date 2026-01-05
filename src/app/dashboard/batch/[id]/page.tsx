@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User } from 'lucide-react'
 import { use } from 'react'
 
 interface Student {
@@ -75,7 +75,12 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
+    const [userRole, setUserRole] = useState<string | null>(null)
+
     useEffect(() => {
+        if (typeof window !== 'undefined') {
+            setUserRole(localStorage.getItem('userRole'))
+        }
         fetchBatchDetails()
         fetchStudents()
     }, [id])
@@ -97,7 +102,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
     const fetchStudents = async () => {
         try {
-            // 1. Fetch enrollments WITHOUT JOIN constraints
+            // 1. Fetch enrollments
             const { data: enrollments, error: enrollError } = await supabase
                 .from('student_batches')
                 .select('*')
@@ -106,17 +111,29 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             if (enrollError) throw enrollError
 
-            // Fetch Sales Persons for displayed IDs manual join
+            // Fetch Sales Persons manual join
             const salesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
             let salesMap = new Map()
 
             if (salesIds.length > 0) {
-                const { data: salesUsers } = await supabase
+                // Robust fetch: Check both ID (legacy UUIDs) and sales_id (new String IDs)
+                const { data: usersById } = await supabase
                     .from('users')
                     .select('id, name, phone, sales_id')
-                    .or(`sales_id.in.(${salesIds.join(',')}),id.in.(${salesIds.join(',')})`)
+                    .in('id', salesIds)
 
-                salesUsers?.forEach((u: any) => {
+                const { data: usersBySalesId } = await supabase
+                    .from('users')
+                    .select('id, name, phone, sales_id')
+                    .in('sales_id', salesIds)
+
+                // Merge results
+                const allSalesUsers = [
+                    ...(usersById || []),
+                    ...(usersBySalesId || [])
+                ]
+
+                allSalesUsers.forEach((u: any) => {
                     if (u.sales_id) salesMap.set(u.sales_id, u)
                     if (u.id) salesMap.set(u.id, u)
                 })
@@ -124,7 +141,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             const enrollmentsWithSales = enrollments?.map((e: any) => ({
                 ...e,
-                sales_person: salesMap.get(e.sales_id)
+                sales_person: e.sales_id ? salesMap.get(e.sales_id) : null
             }))
 
             // 2. Fetch official students to check onboarding status
@@ -429,7 +446,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         <CheckCircle size={14} />
                                                     </button>
                                                     <button onClick={cancelEditingEmail} style={{ color: 'var(--red-600)', background: 'none', border: 'none', cursor: 'pointer' }} title="Cancel">
-                                                        <CheckCircle size={14} style={{ transform: 'rotate(45deg)' }} /> {/* Using CheckCircle as X for now, or fetch X from imports */}
+                                                        <CheckCircle size={14} style={{ transform: 'rotate(45deg)' }} />
                                                     </button>
                                                 </div>
                                             ) : (
@@ -445,7 +462,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         className="group-hover:opacity-100"
                                                         title="Edit Email"
                                                     >
-                                                        <RefreshCw size={12} style={{ transform: 'rotate(90deg)' }} /> {/* Using Refresh as edit placeholder if needed or Pencil */}
+                                                        <RefreshCw size={12} style={{ transform: 'rotate(90deg)' }} />
                                                     </button>
                                                 </span>
                                             )}
@@ -515,20 +532,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         To Call
                                                     </div>
 
-                                                    <button
-                                                        onClick={() => handleCallStudent(student.id)}
-                                                        className="hover:scale-105 active:scale-95"
-                                                        style={{
-                                                            fontSize: '0.75rem', fontWeight: '600',
-                                                            color: 'white', background: 'var(--primary)',
-                                                            border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
-                                                            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
-                                                            boxShadow: '0 2px 4px rgba(var(--primary-rgb), 0.2)',
-                                                            transition: 'transform 0.1s'
-                                                        }}
-                                                    >
-                                                        <Phone size={12} /> Call Student
-                                                    </button>
+                                                    {['SHO', 'SSHO', 'ACADEMIC_LEAD'].includes(userRole || '') && (
+                                                        <button
+                                                            onClick={() => handleCallStudent(student.id)}
+                                                            className="hover:scale-105 active:scale-95"
+                                                            style={{
+                                                                fontSize: '0.75rem', fontWeight: '600',
+                                                                color: 'white', background: 'var(--primary)',
+                                                                border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                                                boxShadow: '0 2px 4px rgba(var(--primary-rgb), 0.2)',
+                                                                transition: 'transform 0.1s'
+                                                            }}
+                                                        >
+                                                            <Phone size={12} /> Call Student
+                                                        </button>
+                                                    )}
                                                 </>
                                             ) : (
                                                 /* 2. CALLED, EITHER PENDING OR ONBOARDED */

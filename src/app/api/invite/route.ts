@@ -51,14 +51,14 @@ export async function POST(request: Request) {
             }
         )
 
-        // Check if user is admin
+        // Check if user is admin or sub_admin
         const { data: userData, error: roleError } = await supabaseAdmin
             .from('users')
             .select('role')
             .eq('id', user.id)
             .single()
 
-        if (roleError || userData?.role !== 'ADMIN') {
+        if (roleError || (userData?.role !== 'ADMIN' && userData?.role !== 'SUB_ADMIN')) {
             console.log("DEBUG INVITE: Permission Denied. User ID:", user.id);
             console.log("DEBUG INVITE: Role Error:", roleError);
             console.log("DEBUG INVITE: User Role Data:", userData);

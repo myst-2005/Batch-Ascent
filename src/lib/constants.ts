@@ -7,6 +7,7 @@ export const SCHOOLS = [
 
 export const ROLES = {
     ADMIN: 'ADMIN',
+    SUB_ADMIN: 'SUB_ADMIN',
     SHO: 'SHO',
     ACADEMIC_LEAD: 'ACADEMIC_LEAD',
     SALES: 'SALES',

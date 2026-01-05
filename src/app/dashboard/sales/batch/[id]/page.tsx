@@ -398,7 +398,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                             )}
                                         </div>
                                     ) : (
-                                        typeof window !== 'undefined' && localStorage.getItem('userRole') === 'SALES_HEAD' && (
+                                        typeof window !== 'undefined' && ['SALES_HEAD', 'ADMIN'].includes(localStorage.getItem('userRole') || '') && (
                                             <button
                                                 onClick={async () => {
                                                     if (!confirm(`Verify student ${student.student_name}?`)) return
@@ -576,7 +576,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                             )}
                                         </div>
                                     ) : (
-                                        typeof window !== 'undefined' && localStorage.getItem('userRole') === 'SALES_HEAD' && (
+                                        typeof window !== 'undefined' && ['SALES_HEAD', 'ADMIN'].includes(localStorage.getItem('userRole') || '') && (
                                             <button
                                                 onClick={async () => {
                                                     if (!confirm(`Verify student ${student.student_name}?`)) return
