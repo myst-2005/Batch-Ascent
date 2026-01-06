@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { UserPlus, Trash2, Filter, LogIn } from 'lucide-react'
+import { UserPlus, Trash2, Filter } from 'lucide-react'
 import { SCHOOLS, ROLES } from '@/lib/constants'
 
 export default function AdminUsersPage() {
@@ -307,42 +307,8 @@ export default function AdminUsersPage() {
                                         <button
                                             onClick={() => handleDeleteUser(user.id)}
                                             style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
-                                            title="Delete User"
                                         >
                                             <Trash2 size={18} />
-                                        </button>
-                                        <button
-                                            onClick={async () => {
-                                                if (!confirm(`Are you sure you want to sign in as ${user.name}? You will be logged out of your admin account.`)) return
-
-                                                try {
-                                                    const { data: { session } } = await supabase.auth.getSession()
-
-                                                    const res = await fetch('/api/impersonate', {
-                                                        method: 'POST',
-                                                        headers: {
-                                                            'Content-Type': 'application/json',
-                                                            'Authorization': `Bearer ${session?.access_token}`
-                                                        },
-                                                        body: JSON.stringify({ userId: user.id })
-                                                    })
-
-                                                    const data = await res.json()
-
-                                                    if (!res.ok) throw new Error(data.error || 'Failed to impersonate')
-
-                                                    // Redirect to the magic link
-                                                    if (data.url) {
-                                                        window.location.href = data.url
-                                                    }
-                                                } catch (err: any) {
-                                                    alert('Error: ' + err.message)
-                                                }
-                                            }}
-                                            style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer' }}
-                                            title="Sign In As User"
-                                        >
-                                            <LogIn size={18} />
                                         </button>
                                     </td>
                                 </tr>

@@ -22,15 +22,8 @@ export default function AuthCallbackPage() {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
                 // User is now signed in (via the link)
-                // Check if there is a specific destination
-                const searchParams = new URLSearchParams(window.location.search)
-                const next = searchParams.get('next')
-
-                if (next) {
-                    router.push(next)
-                } else {
-                    router.push('/update-password')
-                }
+                // Redirect them to set their password
+                router.push('/update-password')
             }
         })
 

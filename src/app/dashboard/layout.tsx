@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp } from 'lucide-react'
-import { supabase } from '@/lib/supabaseClient'
 import styles from './dashboard.module.css'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -16,51 +15,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [isMobileOpen, setIsMobileOpen] = useState(false)
 
     useEffect(() => {
-        const checkAuth = async () => {
-            const storedRole = localStorage.getItem('userRole')
-            if (storedRole && storedRole !== 'PENDING') {
-                setRole(storedRole)
-                setUserName(localStorage.getItem('userName') || 'User')
-            } else {
-                // If no local storage, check if we have an active Supabase session (e.g. via Magic Link)
-                const { data: { session } } = await supabase.auth.getSession()
-
-                if (session?.user) {
-                    try {
-                        const { data: userData } = await supabase
-                            .from('users')
-                            .select('*')
-                            .eq('id', session.user.id)
-                            .single()
-
-                        if (userData && userData.role !== 'PENDING') {
-                            // Restore local storage
-                            localStorage.setItem('userRole', userData.role)
-                            localStorage.setItem('userName', userData.name)
-                            if (userData.school) localStorage.setItem('userSchool', userData.school)
-                            else localStorage.removeItem('userSchool')
-
-                            if (userData.sales_id) localStorage.setItem('salesId', userData.sales_id)
-                            else localStorage.removeItem('salesId')
-
-                            setRole(userData.role)
-                            setUserName(userData.name)
-                            return
-                        }
-                    } catch (err) {
-                        console.error('Error restoring session:', err)
-                    }
-                }
-
-                // If check fails
-                if (storedRole === 'PENDING') {
-                    localStorage.removeItem('userRole')
-                }
-                router.push('/')
+        const storedRole = localStorage.getItem('userRole')
+        if (!storedRole || storedRole === 'PENDING') {
+            if (storedRole === 'PENDING') {
+                // Clear invalid session if any
+                localStorage.removeItem('userRole')
             }
+            router.push('/')
+        } else {
+            setRole(storedRole)
+            setUserName(localStorage.getItem('userName') || 'User')
         }
-
-        checkAuth()
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 
