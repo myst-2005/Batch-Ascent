@@ -226,123 +226,186 @@ export default function BatchList() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                {filteredBatches.map((batch) => (
-                    <div
-                        key={batch.id}
-                        className="card"
-                        onClick={() => router.push(`/dashboard/batch/${batch.id}`)}
-                        style={{ transition: 'all 0.2s', cursor: 'pointer' }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-4px)'
-                            e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)'
-                            e.currentTarget.style.boxShadow = ''
-                        }}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
-                            <div>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{batch.name}</h3>
-                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-                                    <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'var(--surface-hover)', borderRadius: '0.25rem', color: 'var(--text-secondary)' }}>{batch.id}</span>
-                                    {batch.mode && (
-                                        <span style={{
-                                            fontSize: '0.75rem',
-                                            padding: '0.25rem 0.5rem',
-                                            borderRadius: '0.25rem',
-                                            background: batch.mode === 'Online' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                                            color: batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)',
-                                            border: `1px solid ${batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)'}`
-                                        }}>
-                                            {batch.mode}
-                                        </span>
+                {filteredBatches.map((batch) => {
+                    const isFull = (batch.enrolled_count || 0) >= (batch.strength || 0)
+                    return (
+                        <div
+                            key={batch.id}
+                            className="card"
+                            onClick={() => router.push(`/dashboard/batch/${batch.id}`)}
+                            style={{ transition: 'all 0.2s', cursor: 'pointer', position: 'relative', overflow: 'hidden' }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-4px)'
+                                e.currentTarget.style.boxShadow = '0 8px 16px rgba(0,0,0,0.1)'
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)'
+                                e.currentTarget.style.boxShadow = ''
+                            }}
+                        >
+                            {isFull && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%) rotate(-25deg)',
+                                    fontSize: '4rem',
+                                    fontWeight: '900',
+                                    color: 'rgba(153, 27, 27, 0.4)', // Darker Red
+                                    whiteSpace: 'nowrap',
+                                    pointerEvents: 'none',
+                                    zIndex: 0,
+                                    userSelect: 'none'
+                                }}>
+                                    HOUSE FULL
+                                </div>
+                            )}
+                            <div style={{ position: 'relative', zIndex: 1 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '1rem' }}>
+                                    <div>
+                                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--primary)' }}>{batch.name}</h3>
+                                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                            <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: 'var(--surface-hover)', borderRadius: '0.25rem', color: 'var(--text-secondary)' }}>{batch.id}</span>
+                                            {batch.mode && (
+                                                <span style={{
+                                                    fontSize: '0.75rem',
+                                                    padding: '0.25rem 0.5rem',
+                                                    borderRadius: '0.25rem',
+                                                    background: batch.mode === 'Online' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                                    color: batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)',
+                                                    border: `1px solid ${batch.mode === 'Online' ? 'var(--success)' : 'var(--primary)'}`
+                                                }}>
+                                                    {batch.mode}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                router.push(`/dashboard/batch/${batch.id}/edit`)
+                                            }}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                color: 'var(--text-secondary)',
+                                                padding: '0.25rem',
+                                                borderRadius: '0.25rem',
+                                                transition: 'background 0.2s'
+                                            }}
+                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                            title="Edit Batch"
+                                        >
+                                            <Edit size={18} />
+                                        </button>
                                     )}
                                 </div>
-                            </div>
-                            {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation()
-                                        router.push(`/dashboard/batch/${batch.id}/edit`)
-                                    }}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        color: 'var(--text-secondary)',
-                                        padding: '0.25rem',
-                                        borderRadius: '0.25rem',
-                                        transition: 'background 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                    title="Edit Batch"
-                                >
-                                    <Edit size={18} />
-                                </button>
-                            )}
-                        </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                                <BookOpen size={16} />
-                                <span>{batch.course}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                                <div style={{ position: 'relative', width: '24px', height: '24px' }}>
-                                    <svg width="24" height="24" viewBox="0 0 36 36">
-                                        <path
-                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                            fill="none"
-                                            stroke="#e2e8f0"
-                                            strokeWidth="4"
-                                        />
-                                        <path
-                                            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                            fill="none"
-                                            stroke="var(--primary)"
-                                            strokeWidth="4"
-                                            strokeDasharray={`${((batch.enrolled_count || 0) / (batch.strength || 1)) * 100}, 100`}
-                                        />
-                                    </svg>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                        <BookOpen size={16} />
+                                        <span>{batch.course}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                        <div style={{ position: 'relative', width: '24px', height: '24px' }}>
+                                            <svg width="24" height="24" viewBox="0 0 36 36">
+                                                <path
+                                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                    fill="none"
+                                                    stroke="#e2e8f0"
+                                                    strokeWidth="4"
+                                                />
+                                                <path
+                                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                                    fill="none"
+                                                    stroke="var(--primary)"
+                                                    strokeWidth="4"
+                                                    strokeDasharray={`${((batch.enrolled_count || 0) / (batch.strength || 1)) * 100}, 100`}
+                                                />
+                                            </svg>
+                                        </div>
+                                        <span>{batch.enrolled_count || 0} / {batch.strength} Students</span>
+                                    </div>
+                                    {batch.school && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                            <BookOpen size={16} />
+                                            <span>{batch.school}</span>
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                                        <Calendar size={16} />
+                                        <span>{new Date(batch.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                                    </div>
                                 </div>
-                                <span>{batch.enrolled_count || 0} / {batch.strength} Students</span>
                             </div>
-                            {batch.school && (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                                    <BookOpen size={16} />
-                                    <span>{batch.school}</span>
-                                </div>
-                            )}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
-                                <Calendar size={16} />
-                                <span>{new Date(batch.start_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                            </div>
+
+                            {/* Countdown Timer */}
+                            {(() => {
+                                // Calculate urgency
+                                const timeDiff = new Date(batch.start_date).getTime() - now.getTime()
+                                const daysLeft = timeDiff / (1000 * 60 * 60 * 24)
+
+                                let background = 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)' // Default Blue
+                                let boxShadow = '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
+                                let animation = 'none'
+                                let label = 'Orientation In'
+                                let mainText = getCountdown(batch.start_date).text
+
+                                if (isFull) {
+                                    // Full: Red Overlay but keep timer
+                                    background = 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)'
+                                    boxShadow = '0 4px 6px -1px rgba(185, 28, 28, 0.3)'
+                                    label = 'Orientation In' // Keep showing when it starts
+                                } else if (daysLeft <= 0) {
+                                    // Ended: Green
+                                    background = 'linear-gradient(135deg, #15803d 0%, #22c55e 100%)'
+                                    boxShadow = '0 4px 6px -1px rgba(34, 197, 94, 0.3)'
+                                    label = 'Batch Status'
+                                    mainText = 'Done'
+                                } else if (daysLeft <= 7) {
+                                    // Urgent: Red (1 week)
+                                    background = 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)'
+                                    boxShadow = '0 4px 6px -1px rgba(220, 38, 38, 0.3)'
+                                    animation = 'pulse-slow 2s infinite'
+                                    label = 'Orientation Soon!'
+                                } else if (daysLeft <= 14) {
+                                    // Warning: Yellow (2 weeks)
+                                    background = 'linear-gradient(135deg, #ca8a04 0%, #eab308 100%)'
+                                    boxShadow = '0 4px 6px -1px rgba(202, 138, 4, 0.3)'
+                                    label = 'Orientation Upcoming'
+                                }
+
+                                return (
+                                    <div style={{
+                                        marginTop: '1.5rem',
+                                        padding: '1rem',
+                                        background,
+                                        borderRadius: '0.75rem',
+                                        color: 'white',
+                                        textAlign: 'center',
+                                        boxShadow,
+                                        animation,
+                                        position: 'relative',
+                                        zIndex: 1
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', opacity: 0.9, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                                            <Clock size={14} />
+                                            {label}
+                                        </div>
+                                        <div style={{ fontSize: '1.5rem', fontWeight: '700', fontFamily: 'monospace' }}>
+                                            {mainText}
+                                        </div>
+                                    </div>
+                                )
+                            })()}
+
+
                         </div>
-
-                        {/* Countdown Timer */}
-                        <div style={{
-                            marginTop: '1.5rem',
-                            padding: '1rem',
-                            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-                            borderRadius: '0.75rem',
-                            color: 'white',
-                            textAlign: 'center',
-                            boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)'
-                        }}>
-                            <div style={{ fontSize: '0.75rem', opacity: 0.9, marginBottom: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                                <Clock size={14} />
-                                Orientation In
-                            </div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: '700', fontFamily: 'monospace' }}>
-                                {getCountdown(batch.start_date).text}
-                            </div>
-                        </div>
-
-
-                    </div>
-                ))}
+                    )
+                })}
             </div>
         </div>
     )

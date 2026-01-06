@@ -73,10 +73,10 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Selected Sales Executive not found in database' }, { status: 400 })
         }
 
-        // 5. Fetch Batch Details for Code Generation
+        // 5. Fetch Batch Details for Code Generation AND Capacity Check
         const { data: batch, error: batchFetchError } = await supabaseAdmin
             .from('batches')
-            .select('school, course')
+            .select('school, course, strength, name') // Added strength and name
             .eq('id', batch_id)
             .single()
 
@@ -84,17 +84,79 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
         }
 
+        // --- BATCH CAPACITY CHECK ---
+        const { count: enrolledCount, error: countError } = await supabaseAdmin
+            .from('student_batches')
+            .select('*', { count: 'exact', head: true })
+            .eq('batch_id', batch_id)
+
+        // Assuming batch.strength is mandatory. If null, we might skip check or assume unlimited.
+        // Let's assume strength is a number.
+        if (enrolledCount !== null && batch.strength && enrolledCount >= batch.strength) {
+            console.log(`Batch ${batch.name} (${batch_id}) is FULL. Triggering Overflow Webhook...`)
+
+            // Fetch Sales Person details (need email/phone for webhook if possible, though we only queried ID initially)
+            // Let's re-query to be safe and get cleaner data
+            const { data: salesUserFull } = await supabaseAdmin
+                .from('users')
+                .select('email, phone, sales_id')
+                .eq('id', sales_user_id)
+                .single()
+
+            const payload = {
+                sales_id: salesPerson.sales_id,
+                sales_email: salesUserFull?.email,
+                student_name,
+                student_email,
+                student_phone,
+                batch_name: batch.name,
+                batch_id: batch_id,
+                school: batch.school,
+                course: batch.course,
+                status: 'BATCH_FULL_OVERFLOW'
+            }
+
+            try {
+                // Webhook URL provided by user
+                const response = await fetch('https://purpletech.app.n8n.cloud/webhook/fafed605-b9af-4f2c-92b5-082b14770997', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+
+                if (!response.ok) {
+                    console.error('Webhook failed with status:', response.status)
+                }
+            } catch (err) {
+                console.error('Webhook fetch error:', err)
+            }
+
+            // Return a specific status so frontend can show "Batch Full, Request Queued"
+            // We do NOT insert into DB. "Delete that data" means don't save it locally.
+            return NextResponse.json({
+                success: false,
+                message: 'Batch is full. Student added to waitlist/overflow via webhook.',
+                code: 'BATCH_FULL'
+            }, { status: 409 })
+        }
+
         const now = new Date().toISOString()
         const phoneInt = parseInt(student_phone.replace(/\D/g, ''))
 
         // --- Student ID Generation Logic ---
 
-        // Mappings
-        const schoolCodes: Record<string, string> = {
-            "Tech School": "TS",
-            "Design School": "DS",
-            "Marketing School": "MS",
-            "Finance School": "FS"
+        // Fetch School Code from DB
+        const { data: schoolData, error: schoolFetchError } = await supabaseAdmin
+            .from('schools')
+            .select('code')
+            .eq('name', batch.school)
+            .single()
+
+        let schoolCode = "XX"
+        if (schoolData && schoolData.code) {
+            schoolCode = schoolData.code
+        } else {
+            console.warn(`School code for '${batch.school}' not found in DB, defaulting to XX`)
         }
 
         const courseCodes: Record<string, string> = {
@@ -113,10 +175,13 @@ export async function POST(request: Request) {
             "Advanced Taxation Course": "TX",
             "HACA Scale Up": "SU",
             "Tax Practitioner Bootcamp": "TB",
+            "Flutter full stack": "FL",
             "NAME": "GEN"
         }
 
-        const schoolCode = schoolCodes[batch.school] || "XX"
+        // Use the schoolCode we fetched from the DB above.
+        // If it was missing, we already defaulted it to "XX".
+
         const courseCode = courseCodes[batch.course] || "YY"
 
         // Get Sequence Number via RPC

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Save } from 'lucide-react'
+import { SCHOOLS } from '@/lib/constants'
 
 export default function CreateBatchPage() {
     const router = useRouter()
@@ -22,6 +23,26 @@ export default function CreateBatchPage() {
     })
     const [academicLeads, setAcademicLeads] = useState<any[]>([])
     const [availableSHOs, setAvailableSHOs] = useState<any[]>([])
+    const [schoolsList, setSchoolsList] = useState<any[]>([])
+
+    // Fetch Schools on component mount
+    useEffect(() => {
+        const fetchSchools = async () => {
+            try {
+                const { data, error } = await supabase.from('schools').select('*').order('name')
+                if (data && data.length > 0) {
+                    setSchoolsList(data)
+                } else {
+                    // Fallback to constants if DB table is empty or missing
+                    setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+                }
+            } catch (err) {
+                console.error('Error fetching schools:', JSON.stringify(err, null, 2))
+                setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+            }
+        }
+        fetchSchools()
+    }, [])
 
     const courses = [
         {
@@ -59,6 +80,12 @@ export default function CreateBatchPage() {
                 "HACA Scale Up",
                 "Tax Practitioner Bootcamp"
             ]
+        },
+        {
+            category: "Coding School",
+            items: [
+                "Flutter full stack"
+            ]
         }
     ]
 
@@ -95,11 +122,23 @@ export default function CreateBatchPage() {
 
     // Auto-select Academic Lead when School is set
     useEffect(() => {
-        if (formData.school && academicLeads.length > 0) {
-            const leadForSchool = academicLeads.find(lead => lead.school === formData.school)
-            if (leadForSchool && formData.academic_lead !== leadForSchool.name) {
-                setFormData(prev => ({ ...prev, academic_lead: leadForSchool.name }))
+        if (formData.school) {
+            // Fetch SHOs when school changes (or is set initially)
+            fetchSHOs(formData.school)
+
+            // Auto-select lead
+            if (academicLeads.length > 0) {
+                const leadForSchool = academicLeads.find(lead => lead.school === formData.school)
+                if (leadForSchool) {
+                    setFormData(prev => ({ ...prev, academic_lead: leadForSchool.name }))
+                } else {
+                    // Clear lead if none found for this school (optional, but good for admin switching schools)
+                    setFormData(prev => ({ ...prev, academic_lead: '' }))
+                }
             }
+        } else {
+            setAvailableSHOs([])
+            setFormData(prev => ({ ...prev, academic_lead: '' }))
         }
     }, [formData.school, academicLeads])
 
@@ -110,10 +149,10 @@ export default function CreateBatchPage() {
             const name = localStorage.getItem('userName')
             const role = localStorage.getItem('userRole')
 
-            if (school) {
+            if (school && role !== 'ADMIN' && role !== 'CEO') {
                 setUserSchool(school)
                 setFormData(prev => ({ ...prev, school }))
-                fetchSHOs(school)
+                // fetchSHOs(school) // Handled by the new useEffect
             }
 
             if (name) {
@@ -150,8 +189,19 @@ export default function CreateBatchPage() {
         }
     }
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData({ ...formData, [e.target.name]: e.target.value })
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        let value = e.target.value
+
+        // Sanitize Batch ID to prevent URL issues
+        if (e.target.name === 'id') {
+            const sanitized = value.replace(/[^a-zA-Z0-9-_]/g, '').toUpperCase()
+            if (value !== sanitized) {
+                // Optional: You could show a toast here if you had one, but strict replacement works too
+            }
+            value = sanitized
+        }
+
+        setFormData({ ...formData, [e.target.name]: value })
     }
 
     return (
@@ -170,6 +220,9 @@ export default function CreateBatchPage() {
                             required
                             onChange={handleChange}
                         />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                            Only letters, numbers, hyphens (-), and underscores (_) allowed.
+                        </p>
                     </div>
                     <div>
                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Batch Name</label>
@@ -205,6 +258,7 @@ export default function CreateBatchPage() {
                                     if (school.includes('design') && cat.includes('design')) return true
                                     if ((school.includes('tech') || school.includes('engineering') || school.includes('software') || school.includes('it')) && cat.includes('tech')) return true
                                     if ((school.includes('finance') || school.includes('account') || school.includes('business')) && cat.includes('finance')) return true
+                                    if (school.includes('coding') && cat.includes('coding')) return true
 
                                     return false
                                 })
@@ -278,17 +332,20 @@ export default function CreateBatchPage() {
 
                 <div>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>School / Department</label>
-                    <input
+                    <select
                         name="school"
-                        type="text"
                         className="input"
-                        placeholder="e.g. School of Engineering"
                         required
                         value={formData.school}
                         onChange={handleChange}
-                        readOnly={!!userSchool}
+                        disabled={!!userSchool}
                         style={userSchool ? { background: 'var(--surface-hover)', cursor: 'not-allowed' } : {}}
-                    />
+                    >
+                        <option value="">Select School</option>
+                        {schoolsList.map(school => (
+                            <option key={school.id || school.name} value={school.name}>{school.name}</option>
+                        ))}
+                    </select>
                 </div>
 
                 <div>

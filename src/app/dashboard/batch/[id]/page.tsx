@@ -1,9 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User } from 'lucide-react'
-import { use } from 'react'
 
 interface Student {
     id: string
@@ -15,6 +14,7 @@ interface Student {
     sales_person?: {
         name: string
         phone: string
+        sales_id?: string
     }
     onboarding_completed?: boolean
     official_student_id?: string
@@ -42,48 +42,24 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const [batch, setBatch] = useState<Batch | null>(null)
     const [students, setStudents] = useState<Student[]>([])
     const [loading, setLoading] = useState(true)
-
-    const handleRefreshCliqId = async () => {
-        if (!batch?.sho_name) return
-
-        try {
-            const { data: userData, error: userError } = await supabase
-                .from('users')
-                .select('cliq_id')
-                .eq('name', batch.sho_name)
-                .eq('role', 'SHO')
-                .maybeSingle()
-
-            if (userError) throw userError
-
-            if (userData?.cliq_id) {
-                const { error: batchError } = await supabase
-                    .from('batches')
-                    .update({ cliq_id: userData.cliq_id })
-                    .eq('id', batch.id)
-
-                if (batchError) throw batchError
-
-                setBatch(prev => prev ? { ...prev, cliq_id: userData.cliq_id } : null)
-                alert(`Cliq ID synced: ${userData.cliq_id}`)
-            } else {
-                alert(`No Cliq ID found for SHO: ${batch.sho_name}`)
-            }
-        } catch (error: any) {
-            console.error('Error refreshing Cliq ID:', error)
-            alert('Error: ' + error.message)
-        }
-    }
-
     const [userRole, setUserRole] = useState<string | null>(null)
+    const [userSchool, setUserSchool] = useState<string | null>(null)
+    const [userSalesId, setUserSalesId] = useState<string | null>(null)
+
+    const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
+    const [tempEmail, setTempEmail] = useState('')
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setUserRole(localStorage.getItem('userRole'))
+            setUserSchool(localStorage.getItem('userSchool'))
+            setUserSalesId(localStorage.getItem('salesId'))
         }
         fetchBatchDetails()
         fetchStudents()
     }, [id])
+
+    // ... (fetchBatchDetails, fetchStudents)
 
     const fetchBatchDetails = async () => {
         try {
@@ -169,6 +145,58 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
+    const handleRefreshCliqId = async () => {
+        if (!batch?.sho_name) return
+
+        try {
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('cliq_id')
+                .eq('name', batch.sho_name)
+                .eq('role', 'SHO')
+                .maybeSingle()
+
+            if (userError) throw userError
+
+            if (userData?.cliq_id) {
+                const { error: batchError } = await supabase
+                    .from('batches')
+                    .update({ cliq_id: userData.cliq_id })
+                    .eq('id', batch.id)
+
+                if (batchError) throw batchError
+
+                setBatch(prev => prev ? { ...prev, cliq_id: userData.cliq_id } : null)
+                alert(`Cliq ID synced: ${userData.cliq_id}`)
+            } else {
+                alert(`No Cliq ID found for SHO: ${batch.sho_name}`)
+            }
+        } catch (error: any) {
+            console.error('Error refreshing Cliq ID:', error)
+            alert('Error: ' + error.message)
+        }
+    }
+
+
+    const handleVerifyStudent = async (studentId: string) => {
+        if (!confirm('Are you sure you want to verify this student?')) return
+
+        try {
+            const now = new Date().toISOString()
+            const { error } = await supabase
+                .from('student_batches')
+                .update({ verified_at: now, status: 'Verified' })
+                .eq('id', studentId)
+
+            if (error) throw error
+
+            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, verified_at: now, status: 'Verified' } : s))
+        } catch (error: any) {
+            console.error('Error verifying student:', error)
+            alert('Error verifying student: ' + error.message)
+        }
+    }
+
     const toggleOnboarding = async (student: Student, currentStatus: boolean) => {
         try {
             if (!currentStatus) {
@@ -242,9 +270,6 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
-    const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
-    const [tempEmail, setTempEmail] = useState('')
-
     const startEditingEmail = (student: Student) => {
         setEditingStudentId(student.id)
         setTempEmail(student.student_email)
@@ -297,9 +322,37 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
+    const canEditEmail = (student: Student) => {
+        if (!userRole) return false
+
+        // Admins/CEO
+        if (['ADMIN', 'CEO'].includes(userRole)) return true
+
+        // Sales Head / SHO (School Match)
+        if (['SALES_HEAD', 'SHO', 'SSHO'].includes(userRole)) {
+            return batch?.school === userSchool
+        }
+
+        // Sales Person (Own Student)
+        if (userRole === 'SALES') {
+            return student.sales_person?.sales_id === userSalesId
+        }
+
+        return false
+    }
+
     if (loading) return <div>Loading...</div>
 
     if (!batch) return <div>Batch not found</div>
+
+    // Helper to check if user can verify
+    const canVerify = (
+        ['ADMIN', 'CEO'].includes(userRole || '') ||
+        (
+            ['SALES_HEAD', 'SHO', 'SSHO'].includes(userRole || '') &&
+            (userSchool === batch.school)
+        )
+    )
 
     return (
         <div className="animate-fade-in">
@@ -452,18 +505,20 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                             ) : (
                                                 <span className="group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                                     {student.student_email}
-                                                    <button
-                                                        onClick={() => startEditingEmail(student)}
-                                                        style={{
-                                                            opacity: 0,
-                                                            transition: 'opacity 0.2s',
-                                                            background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)'
-                                                        }}
-                                                        className="group-hover:opacity-100"
-                                                        title="Edit Email"
-                                                    >
-                                                        <RefreshCw size={12} style={{ transform: 'rotate(90deg)' }} />
-                                                    </button>
+                                                    {canEditEmail(student) && (
+                                                        <button
+                                                            onClick={() => startEditingEmail(student)}
+                                                            style={{
+                                                                opacity: 0,
+                                                                transition: 'opacity 0.2s',
+                                                                background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)'
+                                                            }}
+                                                            className="group-hover:opacity-100"
+                                                            title="Edit Email"
+                                                        >
+                                                            <RefreshCw size={12} style={{ transform: 'rotate(90deg)' }} />
+                                                        </button>
+                                                    )}
                                                 </span>
                                             )}
                                         </div>
@@ -506,14 +561,33 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
                                     {/* Verification Check */}
                                     {!(student.verified_at || student.status === 'Verified') ? (
-                                        <div style={{
-                                            padding: '0.25rem 0.75rem', borderRadius: '9999px',
-                                            fontSize: '0.75rem', fontWeight: '600',
-                                            background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa',
-                                            display: 'flex', alignItems: 'center', gap: '0.375rem'
-                                        }}>
-                                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f97316' }} />
-                                            Pending Verification
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                padding: '0.25rem 0.75rem', borderRadius: '9999px',
+                                                fontSize: '0.75rem', fontWeight: '600',
+                                                background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa',
+                                                display: 'flex', alignItems: 'center', gap: '0.375rem'
+                                            }}>
+                                                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f97316' }} />
+                                                Pending Verification
+                                            </div>
+
+                                            {canVerify && (
+                                                <button
+                                                    onClick={() => handleVerifyStudent(student.id)}
+                                                    className="hover:scale-105 active:scale-95"
+                                                    style={{
+                                                        fontSize: '0.75rem', fontWeight: '600',
+                                                        color: 'white', background: '#f97316',
+                                                        border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                                        boxShadow: '0 2px 4px rgba(249, 115, 22, 0.2)',
+                                                        transition: 'transform 0.1s'
+                                                    }}
+                                                >
+                                                    <CheckCircle size={12} /> Verify Now
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <>

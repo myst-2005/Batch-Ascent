@@ -11,20 +11,19 @@ export default function AdminUsersPage() {
         name: '',
         email: '',
         role: 'SHO',
-        school: SCHOOLS[0]
+        school: ''
     })
+    const [schoolsList, setSchoolsList] = useState<any[]>([])
+
+    // Filter states
 
     // Filter states
     const [filterSchool, setFilterSchool] = useState('ALL')
     const [filterRole, setFilterRole] = useState('ALL')
 
-    useEffect(() => {
-        fetchUsers()
-    }, [])
-
     const fetchUsers = async () => {
         try {
-            const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
+            const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false }) // Users usually have created_at
             if (error) throw error
             if (data) setUsers(data)
         } catch (error) {
@@ -33,6 +32,27 @@ export default function AdminUsersPage() {
             setLoading(false)
         }
     }
+
+    const fetchSchools = async () => {
+        try {
+            const { data, error } = await supabase.from('schools').select('*').order('name')
+            if (data && data.length > 0) {
+                setSchoolsList(data)
+                setNewUser(prev => ({ ...prev, school: data[0].name }))
+            } else {
+                setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+                setNewUser(prev => ({ ...prev, school: SCHOOLS[0] }))
+            }
+        } catch (err) {
+            console.error('Error fetching schools:', JSON.stringify(err, null, 2))
+            setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+        }
+    }
+
+    useEffect(() => {
+        fetchUsers()
+        fetchSchools()
+    }, [])
 
     const handleCreateUser = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -162,7 +182,7 @@ export default function AdminUsersPage() {
                                 onChange={(e) => setFilterSchool(e.target.value)}
                             >
                                 <option value="ALL">All Schools</option>
-                                {SCHOOLS.map(s => <option key={s} value={s}>{s}</option>)}
+                                {schoolsList.map(s => <option key={s.id || s.name} value={s.name}>{s.name}</option>)}
                             </select>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -225,8 +245,8 @@ export default function AdminUsersPage() {
                                             style={{ padding: '0.25rem', fontSize: '0.875rem', maxWidth: '150px' }}
                                         >
                                             <option value="">-</option>
-                                            {SCHOOLS.map(school => (
-                                                <option key={school} value={school}>{school}</option>
+                                            {schoolsList.map(school => (
+                                                <option key={school.id || school.name} value={school.name}>{school.name}</option>
                                             ))}
                                         </select>
                                     </td>
@@ -250,9 +270,13 @@ export default function AdminUsersPage() {
                                                 if (!confirm(`Are you sure you want to update ${user.email}?\nRole: ${user.role}\nSchool: ${user.school || 'None'}`)) return
 
                                                 try {
+                                                    const { data: { session } } = await supabase.auth.getSession()
                                                     const res = await fetch('/api/update-user', {
                                                         method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'Authorization': `Bearer ${session?.access_token}`
+                                                        },
                                                         body: JSON.stringify({
                                                             id: user.id,
                                                             role: user.role,
@@ -261,7 +285,8 @@ export default function AdminUsersPage() {
                                                         })
                                                     })
 
-                                                    if (!res.ok) throw new Error('Failed to update')
+                                                    const data = await res.json()
+                                                    if (!res.ok) throw new Error(data.error || 'Failed to update')
                                                     alert('User updated successfully')
                                                 } catch (err: any) {
                                                     alert('Error updating user: ' + err.message)
@@ -286,9 +311,13 @@ export default function AdminUsersPage() {
                                                 // ... existing Cliq ID logic is separate, or we can merge it.
                                                 // For now keeping it separate as getting too complex in one step
                                                 try {
+                                                    const { data: { session } } = await supabase.auth.getSession()
                                                     const res = await fetch('/api/update-user', {
                                                         method: 'POST',
-                                                        headers: { 'Content-Type': 'application/json' },
+                                                        headers: {
+                                                            'Content-Type': 'application/json',
+                                                            'Authorization': `Bearer ${session?.access_token}`
+                                                        },
                                                         body: JSON.stringify({
                                                             id: user.id,
                                                             cliq_id: cliqId

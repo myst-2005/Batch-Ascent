@@ -30,7 +30,10 @@ export default function ProjectOverview() {
         mostPopularCourse: '',
         enrollmentRate: 0,
         topSalesPerson: '',
-        salesPerformance: [] as { name: string, count: number }[]
+        salesPerformance: [] as { name: string, count: number }[],
+        toVerifyCount: 0,
+        toCallCount: 0,
+        toVerifyList: [] as any[]
     })
 
     useEffect(() => {
@@ -44,7 +47,7 @@ export default function ProjectOverview() {
             setLoading(true)
 
             // 1. Fetch Batches
-            let batchQuery = supabase.from('batches').select('id, course, strength, school')
+            let batchQuery = supabase.from('batches').select('id, course, strength, school, name')
 
             if (role === 'CEO' || role === 'ADMIN') {
                 if (schoolFilter !== 'All Schools') {
@@ -73,6 +76,7 @@ export default function ProjectOverview() {
             // 3. Process Batch Data & Fetch Enrollments
             let allBatches: Batch[] = []
             let allSalesIds: string[] = []
+            let allEnrollments: any[] = []
 
             if (batchesData) {
                 // Fetch enrolled counts and accumulate sales_ids
@@ -81,14 +85,17 @@ export default function ProjectOverview() {
 
                 const { data: enrollments, error: enrollError } = await supabase
                     .from('student_batches')
-                    .select('batch_id, sales_id')
+                    .select('id, student_name, batch_id, sales_id, verified_at, status, called_at')
                     .in('batch_id', batchIds) // Only fetch enrollments for visible batches
 
                 if (enrollError) throw enrollError
 
+                allEnrollments = enrollments || []
+
                 // Map counts to batches
                 allBatches = batchesData.map(batch => {
                     const count = enrollments?.filter(e => e.batch_id === batch.id).length || 0
+                    // @ts-ignore
                     return { ...batch, enrolled_count: count }
                 })
 
@@ -99,7 +106,7 @@ export default function ProjectOverview() {
             }
 
             setBatches(allBatches)
-            calculateStats(allBatches, allSalesIds, usersData || [])
+            calculateStats(allBatches, allSalesIds, usersData || [], allEnrollments)
 
         } catch (error) {
             console.error('Error fetching stats:', error)
@@ -108,10 +115,18 @@ export default function ProjectOverview() {
         }
     }
 
-    const calculateStats = (batchData: Batch[], salesIds: string[], usersMap: any[]) => {
+    const calculateStats = (batchData: any[], salesIds: string[], usersMap: any[], enrollments: any[]) => {
         const totalBatches = batchData.length
         const totalStudents = batchData.reduce((acc, curr) => acc + (curr.enrolled_count || 0), 0)
         const totalCapacity = batchData.reduce((acc, curr) => acc + (curr.strength || 0), 0)
+
+        // Calculate Actionable Stats
+        const toVerifyList = enrollments.filter(e => !(e.verified_at || e.status === 'Verified')).map(e => ({
+            ...e,
+            batch_name: batchData.find(b => b.id === e.batch_id)?.name || 'Unknown Batch'
+        }))
+        const toVerifyCount = toVerifyList.length
+        const toCallCount = enrollments.filter(e => (e.verified_at || e.status === 'Verified') && !e.called_at).length
 
         // Batches per course
         const courses: Record<string, number> = {}
@@ -173,13 +188,17 @@ export default function ProjectOverview() {
             mostPopularCourse: mostPopular,
             enrollmentRate: totalCapacity > 0 ? (totalStudents / totalCapacity) * 100 : 0,
             topSalesPerson: topSalesPersonName,
-            salesPerformance: salesPerformanceArg
+            salesPerformance: salesPerformanceArg,
+            toVerifyCount,
+            toCallCount,
+            toVerifyList
         })
     }
 
     if (loading) return <div className="animate-pulse">Loading analytics...</div>
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+    const showActionableStats = ['SHO', 'SSHO', 'SALES_HEAD'].includes(userRole || '')
 
     return (
         <div className="animate-fade-in">
@@ -201,139 +220,223 @@ export default function ProjectOverview() {
                 )}
             </div>
 
-            {/* KPI Cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
-                        <BookOpen size={24} />
+            {/* KPI Cards / Verification List */}
+            {showActionableStats ? (
+                /* SHO / SSHO / SALES_HEAD View - LIST ONLY */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                            Pending Verifications
+                            <span style={{
+                                background: '#f97316', color: 'white',
+                                padding: '0.125rem 0.5rem', borderRadius: '999px',
+                                fontSize: '0.75rem', verticalAlign: 'middle'
+                            }}>
+                                {stats.toVerifyList.length}
+                            </span>
+                        </h3>
                     </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Batches</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalBatches}</div>
-                    </div>
-                </div>
 
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)' }}>
-                        <Users size={24} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Students</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalStudents}</div>
-                    </div>
-                </div>
-
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-                        <TrendingUp size={24} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Top Course</div>
-                        <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.mostPopularCourse || '-'}</div>
-                    </div>
-                </div>
-                <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' }}>
-                        <Users size={24} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Top Salesperson</div>
-                        <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{stats.topSalesPerson}</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Charts Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-
-                {/* Batches Per Course */}
-                <div className="card">
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Batches per Course</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.batchesPerCourse}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    cursor={{ fill: 'var(--surface-hover)' }}
-                                />
-                                <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-                {/* Course Distribution */}
-                <div className="card">
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Course Distribution</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={stats.batchesPerCourse}
-                                    cx="50%"
-                                    cy="50%"
-                                    labelLine={false}
-                                    outerRadius={100}
-                                    fill="#8884d8"
-                                    dataKey="count"
-                                    label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                    {stats.toVerifyList.length > 0 ? (
+                        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                            {stats.toVerifyList.map((student: any, index: number) => (
+                                <a
+                                    key={student.id}
+                                    href={`/dashboard/batch/${student.batch_id}`}
+                                    style={{ textDecoration: 'none', color: 'inherit' }}
                                 >
-                                    {stats.batchesPerCourse.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
-                            </PieChart>
-                        </ResponsiveContainer>
-                    </div>
+                                    <div style={{
+                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                        padding: '1rem 1.5rem',
+                                        borderBottom: index !== stats.toVerifyList.length - 1 ? '1px solid var(--border)' : 'none',
+                                        transition: 'background 0.2s',
+                                        background: 'var(--surface)'
+                                    }}
+                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                width: '40px', height: '40px', borderRadius: '50%',
+                                                background: '#ffedd5', color: '#c2410c',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                {student.student_name.charAt(0).toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>{student.student_name}</div>
+                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                    Batch: {student.batch_name}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                            <div style={{
+                                                fontSize: '0.85rem', color: '#ea580c', fontWeight: 600,
+                                                display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                            }}>
+                                                Action Required
+                                                <Users size={16} />
+                                            </div>
+                                            <div style={{ color: 'var(--text-tertiary)' }}>→</div>
+                                        </div>
+                                    </div>
+                                </a>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All Caught Up!</div>
+                            <div>No students currently pending verification.</div>
+                        </div>
+                    )}
                 </div>
+            ) : (
+                /* Default Admin / CEO View - FULL DASHBOARD */
+                <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
 
-            </div>
+                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
+                                <BookOpen size={24} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Batches</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalBatches}</div>
+                            </div>
+                        </div>
 
-            {/* School Distribution Chart for Admin/CEO */}
-            {(userRole === 'ADMIN' || userRole === 'CEO') && (
-                <div className="card" style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Batches per School</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.batchesPerSchool}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                                <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    cursor={{ fill: 'var(--surface-hover)' }}
-                                />
-                                <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(34, 197, 94, 0.1)', color: 'var(--success)' }}>
+                                <Users size={24} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Total Students</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.totalStudents}</div>
+                            </div>
+                        </div>
+
+
+                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+                                <TrendingUp size={24} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Top Course</div>
+                                <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{stats.mostPopularCourse || '-'}</div>
+                            </div>
+                        </div>
+                        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ padding: '1rem', borderRadius: '50%', background: 'rgba(236, 72, 153, 0.1)', color: '#ec4899' }}>
+                                <Users size={24} />
+                            </div>
+                            <div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Top Salesperson</div>
+                                <div style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{stats.topSalesPerson}</div>
+                            </div>
+                        </div>
                     </div>
-                </div>
+
+                    {/* Charts Row */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+
+                        {/* Batches Per Course */}
+                        <div className="card">
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Batches per Course</h3>
+                            <div style={{ height: '300px', width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={stats.batchesPerCourse}>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                        <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                        <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                        <Tooltip
+                                            contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                            cursor={{ fill: 'var(--surface-hover)' }}
+                                        />
+                                        <Bar dataKey="count" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                        {/* Course Distribution */}
+                        <div className="card">
+                            <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Course Distribution</h3>
+                            <div style={{ height: '300px', width: '100%' }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie
+                                            data={stats.batchesPerCourse}
+                                            cx="50%"
+                                            cy="50%"
+                                            labelLine={false}
+                                            outerRadius={100}
+                                            fill="#8884d8"
+                                            dataKey="count"
+                                            label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                                        >
+                                            {stats.batchesPerCourse.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Pie>
+                                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    {/* School Distribution Chart for Admin/CEO */}
+                    {
+                        (userRole === 'ADMIN' || userRole === 'CEO') && (
+                            <div className="card" style={{ marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Batches per School</h3>
+                                <div style={{ height: '300px', width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats.batchesPerSchool}>
+                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+                                            <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                            <Tooltip
+                                                contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                                cursor={{ fill: 'var(--surface-hover)' }}
+                                            />
+                                            <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )
+                    }
+
+                    {/* Sales Performance Row */}
+                    {
+                        (userRole === 'CEO' || userRole === 'SALES_HEAD' || userRole === 'ADMIN') && (
+                            <div className="card">
+                                <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Star Sales Performance (Top 5)</h3>
+                                <div style={{ height: '300px', width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart data={stats.salesPerformance} layout="vertical" margin={{ left: 20 }}>
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
+                                            <XAxis type="number" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                                            <YAxis dataKey="name" type="category" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} width={100} />
+                                            <Tooltip
+                                                contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
+                                                cursor={{ fill: 'var(--surface-hover)' }}
+                                            />
+                                            <Bar dataKey="count" fill="#ec4899" radius={[0, 4, 4, 0]} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            </div>
+                        )
+                    }
+                </>
             )}
 
-            {/* Sales Performance Row */}
-            {(userRole === 'CEO' || userRole === 'SALES_HEAD' || userRole === 'ADMIN') && (
-                <div className="card">
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>Star Sales Performance (Top 5)</h3>
-                    <div style={{ height: '300px', width: '100%' }}>
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.salesPerformance} layout="vertical" margin={{ left: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="var(--border)" />
-                                <XAxis type="number" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                                <YAxis dataKey="name" type="category" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} width={100} />
-                                <Tooltip
-                                    contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '8px' }}
-                                    cursor={{ fill: 'var(--surface-hover)' }}
-                                />
-                                <Bar dataKey="count" fill="#ec4899" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-            )}
-        </div>
+        </div >
     )
 }

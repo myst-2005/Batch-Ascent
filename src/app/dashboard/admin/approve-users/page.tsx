@@ -8,9 +8,26 @@ export default function ApproveUsersPage() {
     const [pendingUsers, setPendingUsers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
+    const [schoolsList, setSchoolsList] = useState<any[]>([])
+
     useEffect(() => {
         fetchPendingUsers()
+        fetchSchools()
     }, [])
+
+    const fetchSchools = async () => {
+        try {
+            const { data, error } = await supabase.from('schools').select('*').order('name')
+            if (data && data.length > 0) {
+                setSchoolsList(data)
+            } else {
+                setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+            }
+        } catch (err) {
+            console.error('Error fetching schools:', err)
+            setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+        }
+    }
 
     const fetchPendingUsers = async () => {
         try {
@@ -21,12 +38,11 @@ export default function ApproveUsersPage() {
                 .order('created_at', { ascending: false })
 
             if (error) throw error
-            // Initialize requested_role/school if needed, though they should be from DB
             if (data) {
                 setPendingUsers(data.map(u => ({
                     ...u,
                     selectedRole: u.requested_role || 'SALES',
-                    selectedSchool: u.school || SCHOOLS[0]
+                    selectedSchool: u.school || '' // Let it be empty if not set, user will choose
                 })))
             }
         } catch (error) {
@@ -142,8 +158,9 @@ export default function ApproveUsersPage() {
                                                 onChange={(e) => handleUpdateLocalUser(user.id, 'selectedSchool', e.target.value)}
                                                 style={{ padding: '0.25rem', fontSize: '0.875rem' }}
                                             >
-                                                {SCHOOLS.map(school => (
-                                                    <option key={school} value={school}>{school}</option>
+                                                <option value="">Select School</option>
+                                                {schoolsList.map(school => (
+                                                    <option key={school.id || school.name} value={school.name}>{school.name}</option>
                                                 ))}
                                             </select>
                                         </td>

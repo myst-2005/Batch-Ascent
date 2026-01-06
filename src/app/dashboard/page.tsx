@@ -17,6 +17,7 @@ export default function DashboardPage() {
     return (
         <div>
             <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem', color: 'var(--text-primary)' }}>Overview</h2>
+            <ProjectOverview />
             <BatchList />
         </div>
     )

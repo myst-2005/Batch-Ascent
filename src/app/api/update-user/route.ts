@@ -56,6 +56,23 @@ export async function POST(request: Request) {
         if (school !== undefined) updateData.school = school
         if (sales_id !== undefined) updateData.sales_id = sales_id
 
+        // Validation: Check if Academic Lead already exists for this school
+        if ((role === 'ACADEMIC_LEAD' || (role === undefined && updateData.role === 'ACADEMIC_LEAD')) && (school || updateData.school)) {
+            const targetSchool = school || updateData.school
+
+            const { data: existingLead, error: searchError } = await supabaseAdmin
+                .from('users')
+                .select('id, name')
+                .eq('role', 'ACADEMIC_LEAD')
+                .eq('school', targetSchool)
+                .neq('id', id)
+                .maybeSingle()
+
+            if (existingLead) {
+                return NextResponse.json({ error: `There is already an Academic Lead for ${targetSchool} (${existingLead.name}). Please change their role first.` }, { status: 400 })
+            }
+        }
+
         const { error } = await supabaseAdmin
             .from('users')
             .update(updateData)

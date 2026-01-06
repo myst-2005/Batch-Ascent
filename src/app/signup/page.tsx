@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
@@ -22,9 +22,30 @@ export default function SignupPage() {
         password: '',
         name: '',
         role: 'SALES',
-        school: SCHOOLS[0] // Default School
+        school: ''
     })
     const [loading, setLoading] = useState(false)
+    const [schoolsList, setSchoolsList] = useState<any[]>([])
+
+    useEffect(() => {
+        const fetchSchools = async () => {
+            try {
+                const { data, error } = await supabase.from('schools').select('*').order('name')
+                if (data && data.length > 0) {
+                    setSchoolsList(data)
+                    setFormData(prev => ({ ...prev, school: data[0].name }))
+                } else {
+                    setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+                    setFormData(prev => ({ ...prev, school: SCHOOLS[0] }))
+                }
+            } catch (err) {
+                console.error('Error fetching schools:', err)
+                setSchoolsList(SCHOOLS.map(s => ({ name: s })))
+            }
+        }
+        fetchSchools()
+    }, [])
+
     const [error, setError] = useState('')
     const [success, setSuccess] = useState(false)
     const router = useRouter()
@@ -214,8 +235,8 @@ export default function SignupPage() {
                                 required
                                 style={{ background: 'transparent' }}
                             >
-                                {SCHOOLS.map(school => (
-                                    <option key={school} value={school}>{school}</option>
+                                {schoolsList.map(school => (
+                                    <option key={school.id || school.name} value={school.name}>{school.name}</option>
                                 ))}
                             </select>
                         </div>

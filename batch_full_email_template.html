@@ -1,0 +1,34 @@
+<div
+    style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; color: #334155;">
+    <div style="background-color: #dc2626; padding: 24px; text-align: center;">
+        <h1 style="color: white; margin: 0; font-size: 22px; letter-spacing: 0.5px;">BATCH CAPACITY ALERT</h1>
+    </div>
+    <div style="padding: 32px; background-color: #ffffff;">
+        <p style="font-size: 16px; margin-bottom: 24px;">
+            This is an automated notification that an enrollment attempt was <strong>blocked</strong> because the target
+            batch has reached its maximum capacity.
+        </p>
+
+        <div style="background-color: #f8fafc; border-left: 4px solid #dc2626; padding: 16px; margin-bottom: 24px;">
+            <p style="margin: 8px 0;"><strong>Student Name:</strong> {{ $('Extract The Form Details For The
+                Email').item.json.name }}</p>
+            <p style="margin: 8px 0;"><strong>Sales Executive:</strong> {{ $json.name }}</p>
+            <p style="margin: 8px 0;"><strong>Target Batch:</strong> {{ $('Get a row2').item.json.name }}</p>
+        </div>
+
+        <p style="line-height: 1.6; margin-bottom: 16px;">
+            The student data has been automatically redirected to the waitlist queue for further processing.
+        </p>
+
+        <p style="line-height: 1.6; margin-bottom: 24px; color: #b91c1c; font-weight: 600;">
+            ⚠️ System Warning: Please do not try to bypass these limits or break the system.
+            <span style="font-weight: 400; color: #475569;">Forcing enrollments beyond capacity compromises report
+                integrity and operational workflows. If you need more space, please request a new batch creation.</span>
+        </p>
+
+        <div
+            style="border-top: 1px solid #e2e8f0; padding-top: 24px; margin-top: 32px; font-size: 12px; color: #94a3b8; text-align: center;">
+            System Notification • Batch Ascent • Do Not Reply
+        </div>
+    </div>
+</div>
