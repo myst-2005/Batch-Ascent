@@ -66,13 +66,15 @@ export default function LoginPage() {
 
       // 2. Fetch User Details from public.users table
       if (authData.user) {
-        const { data: userData, error: userError } = await supabase
+        const { data: usersData, error: userError } = await supabase
           .from('users')
           .select('*')
           .eq('email', email)
-          .single()
+          .limit(1)
 
         if (userError) throw userError
+
+        const userData = usersData?.[0]
 
         if (userData) {
           // Check for PENDING role

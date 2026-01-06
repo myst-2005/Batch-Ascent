@@ -253,17 +253,26 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
-    const handleCallStudent = async (studentId: string) => {
+    const handleCallStudent = async (studentId: string, phone: string, undo: boolean = false) => {
         try {
-            const now = new Date().toISOString()
+            let updateData = {}
+            if (undo) {
+                if (!confirm('Are you sure you want to undo the call status?')) return
+                updateData = { called_at: null }
+            } else {
+                updateData = { called_at: new Date().toISOString() }
+                // Open Dialer
+                window.location.href = `tel:${phone}`
+            }
+
             const { error } = await supabase
                 .from('student_batches')
-                .update({ called_at: now })
+                .update(updateData)
                 .eq('id', studentId)
 
             if (error) throw error
 
-            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, called_at: now } : s))
+            setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updateData } : s))
         } catch (error: any) {
             console.error('Error updating call status:', error)
             alert('Error updating call status: ' + error.message)
@@ -349,7 +358,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const canVerify = (
         ['ADMIN', 'CEO'].includes(userRole || '') ||
         (
-            ['SALES_HEAD', 'SHO', 'SSHO'].includes(userRole || '') &&
+            userRole === 'SALES_HEAD' &&
             (userSchool === batch.school)
         )
     )
@@ -608,7 +617,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
                                                     {['SHO', 'SSHO', 'ACADEMIC_LEAD'].includes(userRole || '') && (
                                                         <button
-                                                            onClick={() => handleCallStudent(student.id)}
+                                                            onClick={() => handleCallStudent(student.id, student.student_phone)}
                                                             className="hover:scale-105 active:scale-95"
                                                             style={{
                                                                 fontSize: '0.75rem', fontWeight: '600',
@@ -651,6 +660,19 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         </div>
 
                                                         {/* Action: Mark Done or Undo */}
+                                                        {['SHO', 'SSHO', 'ACADEMIC_LEAD'].includes(userRole || '') && (
+                                                            <button
+                                                                onClick={() => handleCallStudent(student.id, '', true)}
+                                                                style={{
+                                                                    fontSize: '0.7rem', color: 'var(--text-tertiary)',
+                                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                                    textDecoration: 'underline', marginTop: '0.125rem', marginBottom: '0.25rem'
+                                                                }}
+                                                            >
+                                                                Accidentally clicked? Undo Call
+                                                            </button>
+                                                        )}
+
                                                         <button
                                                             onClick={() => toggleOnboarding(student, !!student.onboarding_completed)}
                                                             style={{
