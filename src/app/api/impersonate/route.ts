@@ -64,12 +64,11 @@ export async function POST(request: Request) {
         }
 
         // 5. Generate Magic Link
-        // @ts-ignore - redirectTo is a valid parameter but missing in some type definitions
         const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: email,
             redirectTo: `${appUrl}/auth/callback?next=/dashboard`
-        })
+        } as any)
 
         if (linkError) {
             return NextResponse.json({ error: linkError.message }, { status: 500 })
