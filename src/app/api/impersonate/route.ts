@@ -57,10 +57,18 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Target user has no email' }, { status: 400 })
         }
 
+        // Determine App URL
+        let appUrl = process.env.NEXT_PUBLIC_APP_URL
+        if (!appUrl) {
+            appUrl = request.headers.get('origin') || 'http://localhost:3000'
+        }
+
         // 5. Generate Magic Link
+        // @ts-ignore - redirectTo is a valid parameter but missing in some type definitions
         const { data, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: email,
+            redirectTo: `${appUrl}/auth/callback?next=/dashboard`
         })
 
         if (linkError) {
