@@ -308,8 +308,8 @@ export default function BatchList() {
                                             </button>
                                         )}
 
-                                        {/* Delete Button: Admin / CEO */}
-                                        {typeof window !== 'undefined' && ['ADMIN', 'CEO'].includes(localStorage.getItem('userRole') || '') && (
+                                        {/* Delete Button: Admin / CEO / Academic Lead */}
+                                        {typeof window !== 'undefined' && ['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(localStorage.getItem('userRole') || '') && (
                                             <button
                                                 onClick={async (e) => {
                                                     e.stopPropagation()
@@ -317,9 +317,18 @@ export default function BatchList() {
 
                                                     try {
                                                         const cleanId = batch.id.trim()
-                                                        // 0. Delete sales_enrollments (Crucial dependency)
-                                                        const { error: seError } = await supabase.from('sales_enrollments').delete().eq('batch_id', cleanId)
-                                                        if (seError) throw seError
+                                                        const rawId = batch.id
+
+                                                        const deleteDeps = async (targetId: string) => {
+                                                            await supabase.from('sales_enrollments').delete().eq('batch_id', targetId)
+                                                            await supabase.from('students').delete().eq('batch_id', targetId)
+                                                            await supabase.from('student_batches').delete().eq('batch_id', targetId)
+                                                            await supabase.from('batch_history').delete().eq('batch_id', targetId)
+                                                        }
+
+                                                        // Delete dependencies for both IDs to cover all bases
+                                                        await deleteDeps(cleanId)
+                                                        if (rawId !== cleanId) await deleteDeps(rawId)
 
                                                         // 1. Delete official students
                                                         const { error: sError } = await supabase.from('students').delete().eq('batch_id', cleanId)
@@ -329,12 +338,14 @@ export default function BatchList() {
                                                         const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', cleanId)
                                                         if (sbError) throw sbError
 
-                                                        // 2. Delete batch_history
-                                                        const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', cleanId)
-                                                        if (bhError) throw bhError
-
                                                         // 3. Delete batch
-                                                        const { error: bError } = await supabase.from('batches').delete().eq('id', cleanId)
+                                                        let { error: bError } = await supabase.from('batches').delete().eq('id', cleanId)
+
+                                                        if (bError && rawId !== cleanId) {
+                                                            const res = await supabase.from('batches').delete().eq('id', rawId)
+                                                            bError = res.error
+                                                        }
+
                                                         if (bError) throw bError
 
                                                         // Refresh
