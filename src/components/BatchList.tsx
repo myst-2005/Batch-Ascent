@@ -320,10 +320,17 @@ export default function BatchList() {
                                                         const rawId = batch.id
 
                                                         const deleteDeps = async (targetId: string) => {
-                                                            await supabase.from('sales_enrollments').delete().eq('batch_id', targetId)
-                                                            await supabase.from('students').delete().eq('batch_id', targetId)
-                                                            await supabase.from('student_batches').delete().eq('batch_id', targetId)
-                                                            await supabase.from('batch_history').delete().eq('batch_id', targetId)
+                                                            const { error: seError } = await supabase.from('sales_enrollments').delete().eq('batch_id', targetId)
+                                                            if (seError) throw new Error(`Sales Enrollments delete failed: ${seError.message}`)
+
+                                                            const { error: sError } = await supabase.from('students').delete().eq('batch_id', targetId)
+                                                            if (sError) throw new Error(`Students delete failed: ${sError.message}`)
+
+                                                            const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', targetId)
+                                                            if (sbError) throw new Error(`Student Batches delete failed: ${sbError.message}`)
+
+                                                            const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', targetId)
+                                                            if (bhError) throw new Error(`Batch History delete failed: ${bhError.message}`)
                                                         }
 
                                                         // Delete dependencies for both IDs to cover all bases
