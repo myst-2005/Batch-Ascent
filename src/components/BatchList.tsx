@@ -316,16 +316,17 @@ export default function BatchList() {
                                                     if (!confirm(`Are you sure you want to delete batch "${batch.name}"?\nThis will remove all student enrollments!`)) return
 
                                                     try {
+                                                        const cleanId = batch.id.trim()
                                                         // 1. Delete student_batches
-                                                        const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', batch.id)
+                                                        const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', cleanId)
                                                         if (sbError) throw sbError
 
                                                         // 2. Delete batch_history
-                                                        const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', batch.id)
+                                                        const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', cleanId)
                                                         if (bhError) throw bhError
 
                                                         // 3. Delete batch
-                                                        const { error: bError } = await supabase.from('batches').delete().eq('id', batch.id)
+                                                        const { error: bError } = await supabase.from('batches').delete().eq('id', cleanId)
                                                         if (bError) throw bError
 
                                                         // Refresh
