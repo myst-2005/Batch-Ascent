@@ -85,8 +85,9 @@ export default function BatchList() {
             const userRole = localStorage.getItem('userRole')
             const userName = localStorage.getItem('userName')
 
-            // Admin and CEO see all batches (or filter by choice if implemented later).
-            // SSHO, SALES_HEAD, PROJECT_LEAD are restricted to their school (if set).
+            // Admin, CEO, and SALES_HEAD (if full access desired, but usually school restricted)
+            // If SALES_HEAD should see all batches in their school, they fall into 'else' logic below if isSuperUser is false.
+            // Adjust checks if needed.
             const isSuperUser = userRole === 'ADMIN' || userRole === 'CEO'
 
             if (!isSuperUser) {

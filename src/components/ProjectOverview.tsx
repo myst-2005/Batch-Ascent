@@ -84,7 +84,7 @@ export default function ProjectOverview() {
                 const batchIds = batchesData.map(b => b.id)
 
                 const { data: enrollments, error: enrollError } = await supabase
-                    .from('student_batches')
+                    .from('sales_enrollments')
                     .select('id, student_name, batch_id, sales_id, verified_at, status, called_at')
                     .in('batch_id', batchIds) // Only fetch enrollments for visible batches
 
