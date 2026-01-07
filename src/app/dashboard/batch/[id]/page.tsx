@@ -376,7 +376,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
     if (!batch) return <div>Batch not found</div>
 
-    // Helper to check if user can verify
+    // Helper to check if user can verify (Sales Head, SHO, SSHO within their school)
     const canVerify = (
         ['ADMIN', 'CEO'].includes(userRole || '') ||
         (
@@ -637,7 +637,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         To Call
                                                     </div>
 
-                                                    {['SHO', 'SSHO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
+                                                    {['SHO', 'SSHO'].includes(userRole || '') && (
                                                         <button
                                                             onClick={() => handleCallStudent(student.id, student.student_phone)}
                                                             className="hover:scale-105 active:scale-95"
@@ -682,7 +682,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         </div>
 
                                                         {/* Action: Mark Done or Undo */}
-                                                        {['SHO', 'SSHO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
+                                                        {['SHO', 'SSHO'].includes(userRole || '') && (
                                                             <button
                                                                 onClick={() => handleCallStudent(student.id, '', true)}
                                                                 style={{

@@ -91,12 +91,12 @@ export default function BatchList() {
             const isSuperUser = userRole === 'ADMIN' || userRole === 'CEO'
 
             if (!isSuperUser) {
+                // Base restriction: Must belong to the user's school
                 if (userSchool) {
                     query = query.eq('school', userSchool)
                 }
 
-                // If SHO, only show their own batches
-                // SSHO manages SHOs, so they likely see ALL batches in the school (handled by school filter above).
+                // Strict restriction for SHO: Only see batches where they are the designated SHO
                 if (userRole === 'SHO' && userName) {
                     query = query.eq('sho_name', userName)
                 }
