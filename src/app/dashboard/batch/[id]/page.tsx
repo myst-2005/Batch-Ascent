@@ -380,7 +380,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const canVerify = (
         ['ADMIN', 'CEO'].includes(userRole || '') ||
         (
-            ['SALES_HEAD', 'SHO', 'SSHO'].includes(userRole || '') &&
+            ['SALES_HEAD'].includes(userRole || '') &&
             (userSchool === batch.school)
         )
     )
