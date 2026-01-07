@@ -317,7 +317,15 @@ export default function BatchList() {
 
                                                     try {
                                                         const cleanId = batch.id.trim()
-                                                        // 1. Delete student_batches
+                                                        // 0. Delete sales_enrollments (Crucial dependency)
+                                                        const { error: seError } = await supabase.from('sales_enrollments').delete().eq('batch_id', cleanId)
+                                                        if (seError) throw seError
+
+                                                        // 1. Delete official students
+                                                        const { error: sError } = await supabase.from('students').delete().eq('batch_id', cleanId)
+                                                        if (sError) throw sError
+
+                                                        // 2. Delete student_batches
                                                         const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', cleanId)
                                                         if (sbError) throw sbError
 
