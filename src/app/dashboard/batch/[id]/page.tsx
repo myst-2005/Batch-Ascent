@@ -55,19 +55,26 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             setUserSchool(localStorage.getItem('userSchool'))
             setUserSalesId(localStorage.getItem('salesId'))
         }
-        fetchBatchDetails()
-        fetchStudents()
+
+        // Ensure ID is fully decoded (e.g. if URL has %2F it might be double encoded or just encoded once)
+        const dbId = decodeURIComponent(id)
+        console.log('Fetching batch details for ID (raw):', id)
+        console.log('Fetching batch details for ID (decoded):', dbId)
+
+        fetchBatchDetails(dbId)
+        fetchStudents(dbId)
     }, [id])
 
     // ... (fetchBatchDetails, fetchStudents)
 
-    const fetchBatchDetails = async () => {
+    const fetchBatchDetails = async (batchId = id) => {
         try {
+            // Use decoded ID if passed, otherwise fallback to hook param
             const { data, error } = await supabase
                 .from('batches')
                 .select('*')
-                .eq('id', id)
-                .single()
+                .eq('id', batchId)
+                .maybeSingle()
 
             if (error) throw error
             setBatch(data)
@@ -76,13 +83,13 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
-    const fetchStudents = async () => {
+    const fetchStudents = async (batchId = id) => {
         try {
             // 1. Fetch enrollments
             const { data: enrollments, error: enrollError } = await supabase
                 .from('student_batches')
                 .select('*')
-                .eq('batch_id', id)
+                .eq('batch_id', batchId)
                 .order('linked_at', { ascending: false })
 
             if (enrollError) throw enrollError
@@ -124,7 +131,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             const { data: officialStudents, error: officialError } = await supabase
                 .from('students')
                 .select('email, student_id')
-                .eq('batch_id', id)
+                .eq('batch_id', batchId)
 
             if (officialError) throw officialError
 
