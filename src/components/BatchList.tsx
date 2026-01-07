@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { Users, Calendar, BookOpen, Clock, Edit } from 'lucide-react'
+import { Users, Calendar, BookOpen, Clock, Edit, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -282,28 +282,75 @@ export default function BatchList() {
                                             )}
                                         </div>
                                     </div>
-                                    {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                router.push(`/dashboard/batch/${batch.id}/edit`)
-                                            }}
-                                            style={{
-                                                background: 'none',
-                                                border: 'none',
-                                                cursor: 'pointer',
-                                                color: 'var(--text-secondary)',
-                                                padding: '0.25rem',
-                                                borderRadius: '0.25rem',
-                                                transition: 'background 0.2s'
-                                            }}
-                                            onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                            onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
-                                            title="Edit Batch"
-                                        >
-                                            <Edit size={18} />
-                                        </button>
-                                    )}
+                                    {/* Action Buttons: Edit & Delete */}
+                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                        {/* Edit Button: Academic Lead */}
+                                        {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    router.push(`/dashboard/batch/${batch.id}/edit`)
+                                                }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: 'var(--text-secondary)',
+                                                    padding: '0.25rem',
+                                                    borderRadius: '0.25rem',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                                title="Edit Batch"
+                                            >
+                                                <Edit size={18} />
+                                            </button>
+                                        )}
+
+                                        {/* Delete Button: Admin / CEO */}
+                                        {typeof window !== 'undefined' && ['ADMIN', 'CEO'].includes(localStorage.getItem('userRole') || '') && (
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation()
+                                                    if (!confirm(`Are you sure you want to delete batch "${batch.name}"?\nThis will remove all student enrollments!`)) return
+
+                                                    try {
+                                                        // 1. Delete student_batches
+                                                        const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', batch.id)
+                                                        if (sbError) throw sbError
+
+                                                        // 2. Delete batch_history
+                                                        const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', batch.id)
+                                                        if (bhError) throw bhError
+
+                                                        // 3. Delete batch
+                                                        const { error: bError } = await supabase.from('batches').delete().eq('id', batch.id)
+                                                        if (bError) throw bError
+
+                                                        // Refresh
+                                                        fetchBatches()
+                                                    } catch (err: any) {
+                                                        alert('Error deleting batch: ' + err.message)
+                                                    }
+                                                }}
+                                                style={{
+                                                    background: 'none',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    color: '#ef4444', // Red
+                                                    padding: '0.25rem',
+                                                    borderRadius: '0.25rem',
+                                                    transition: 'background 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                                title="Delete Batch"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
