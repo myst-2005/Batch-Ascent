@@ -1,0 +1,14 @@
+Reproducing logic for Batch ID: PMON10
+
+1. Fetching Batch Details...
+Batch found: No
+
+2. Fetching Students (student_batches)...
+Enrollments count: 0
+
+4. Fetching Official Students (students table)...
+Official students fetch OK.
+
+--- Checking users table schema ---
+Testing users.sales_id with 'TEXT_TEST':
+users.sales_id accepts TEXT.

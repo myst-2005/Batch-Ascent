@@ -87,7 +87,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         try {
             // 1. Fetch enrollments
             const { data: enrollments, error: enrollError } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .select('*')
                 .eq('batch_id', batchId)
                 .order('linked_at', { ascending: false })
@@ -95,20 +95,35 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             if (enrollError) throw enrollError
 
             // Fetch Sales Persons manual join
-            const salesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            const rawSalesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            // Deduplicate to prevent large query strings
+            const salesIds = Array.from(new Set(rawSalesIds))
             let salesMap = new Map()
 
             if (salesIds.length > 0) {
                 // Robust fetch: Check both ID (legacy UUIDs) and sales_id (new String IDs)
-                const { data: usersById } = await supabase
-                    .from('users')
-                    .select('id, name, phone, sales_id')
-                    .in('id', salesIds)
+                const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                const uuidSalesIds = salesIds.filter(id => uuidPattern.test(id))
+                const stringSalesIds = salesIds.filter(id => !uuidPattern.test(id))
 
-                const { data: usersBySalesId } = await supabase
-                    .from('users')
-                    .select('id, name, phone, sales_id')
-                    .in('sales_id', salesIds)
+                let usersById: any[] = []
+                let usersBySalesId: any[] = []
+
+                if (uuidSalesIds.length > 0) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('id, name, phone, sales_id')
+                        .in('id', uuidSalesIds)
+                    usersById = data || []
+                }
+
+                if (stringSalesIds.length > 0) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('id, name, phone, sales_id')
+                        .in('sales_id', stringSalesIds)
+                    usersBySalesId = data || []
+                }
 
                 // Merge results
                 const allSalesUsers = [
@@ -191,7 +206,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         try {
             const now = new Date().toISOString()
             const { error } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .update({ verified_at: now, status: 'Verified' })
                 .eq('id', studentId)
 
@@ -224,9 +239,9 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
                 if (insertError) throw insertError
 
-                // 2. Update flag in student_batches
+                // 2. Update flag in sales_enrollments
                 const { error: updateError } = await supabase
-                    .from('student_batches')
+                    .from('sales_enrollments')
                     .update({ onboarding_completed: true })
                     .eq('id', student.id)
 
@@ -243,9 +258,9 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
                 if (deleteError) throw deleteError
 
-                // 2. Update flag in student_batches
+                // 2. Update flag in sales_enrollments
                 const { error: updateError } = await supabase
-                    .from('student_batches')
+                    .from('sales_enrollments')
                     .update({ onboarding_completed: false })
                     .eq('id', student.id)
 
@@ -273,7 +288,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             }
 
             const { error } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .update(updateData)
                 .eq('id', studentId)
 
@@ -307,9 +322,9 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
 
         try {
-            // 1. Update student_batches (Source of Truth for enrollment)
+            // 1. Update sales_enrollments (Source of Truth for enrollment)
             const { error: batchError } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .update({ student_email: tempEmail })
                 .eq('id', student.id)
 

@@ -1,0 +1,17 @@
+Diagnosing "invalid input syntax for type uuid" with ID: PMON10
+
+--- Table: batches ---
+Querying 'id'=PMON10 SUCCEEDED (Column is likely TEXT).
+
+--- Table: student_batches ---
+Querying 'id'=PMON10 FAILED: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"PMON10\""}
+Querying 'batch_id'=PMON10 SUCCEEDED (Column is likely TEXT).
+
+--- Table: students ---
+Querying 'id'=PMON10 FAILED: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"PMON10\""}
+Querying 'batch_id'=PMON10 SUCCEEDED (Column is likely TEXT).
+
+--- Table: sales_enrollments ---
+Querying 'id'=PMON10 FAILED: {"code":"22P02","details":null,"hint":null,"message":"invalid input syntax for type uuid: \"PMON10\""}
+Querying 'batch_id'=PMON10 SUCCEEDED (Column is likely TEXT).
+

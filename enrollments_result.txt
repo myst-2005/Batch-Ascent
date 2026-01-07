@@ -1,0 +1,4 @@
+Checking 'student_batches' for batch_id: "PMON10"
+Found 0 records in student_batches for PMON10
+Checking 'student_batches' ILIKE %PMON10%
+Found 0 records with fuzzy match

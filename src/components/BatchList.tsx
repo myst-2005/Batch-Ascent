@@ -111,11 +111,12 @@ export default function BatchList() {
             if (data) {
                 // Fetch enrolled counts for each batch
                 const batchesWithCounts = await Promise.all(data.map(async (batch) => {
-                    const { count } = await supabase
-                        .from('student_batches')
-                        .select('*', { count: 'exact', head: true })
+                    const { count, data: enrollmentData } = await supabase
+                        .from('sales_enrollments')
+                        .select('*', { count: 'exact', head: false }) // changed head:true to head:false to get data
                         .eq('batch_id', batch.id)
 
+                    console.log(`Enrollments for batch ${batch.id}:`, enrollmentData)
                     return { ...batch, enrolled_count: count || 0 }
                 }))
                 setBatches(batchesWithCounts)

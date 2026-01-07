@@ -1,0 +1,7 @@
+✅ Table exists: sales_enrollment
+✅ Table exists: enrollments
+✅ Table exists: student_batches
+✅ Table exists: leads
+✅ Table exists: sales_leads
+✅ Table exists: sales_enrollments
+✅ Table exists: users_enrollment

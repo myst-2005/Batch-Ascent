@@ -1,0 +1,6 @@
+
+--- Testing sales_enrollments with Text ID ---
+Querying with "PMON10" succeeded (Column likely TEXT).
+
+--- Testing sales_enrollments with UUID ---
+Querying with UUID succeeded.
