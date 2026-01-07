@@ -327,7 +327,12 @@ export default function BatchList() {
                                                             if (sError) throw new Error(`Students delete failed: ${sError.message}`)
 
                                                             const { error: sbError } = await supabase.from('student_batches').delete().eq('batch_id', targetId)
-                                                            if (sbError) throw new Error(`Student Batches delete failed: ${sbError.message}`)
+                                                            if (sbError) {
+                                                                // Ignore UUID syntax error, implies no matching rows could exist in a UUID column
+                                                                if (!sbError.message.includes('invalid input syntax for type uuid')) {
+                                                                    throw new Error(`Student Batches delete failed: ${sbError.message}`)
+                                                                }
+                                                            }
 
                                                             const { error: bhError } = await supabase.from('batch_history').delete().eq('batch_id', targetId)
                                                             if (bhError) throw new Error(`Batch History delete failed: ${bhError.message}`)
