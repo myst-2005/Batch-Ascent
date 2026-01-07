@@ -5,7 +5,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts'
-import { BookOpen, Users, TrendingUp } from 'lucide-react'
+import { BookOpen, Users, TrendingUp, Phone } from 'lucide-react'
 
 interface Batch {
     id: string
@@ -13,6 +13,7 @@ interface Batch {
     enrolled_count: number
     strength: number
     school?: string
+    name: string
 }
 
 import { SCHOOLS } from '@/lib/constants'
@@ -33,7 +34,8 @@ export default function ProjectOverview() {
         salesPerformance: [] as { name: string, count: number }[],
         toVerifyCount: 0,
         toCallCount: 0,
-        toVerifyList: [] as any[]
+        toVerifyList: [] as any[],
+        toCallList: [] as any[]
     })
 
     useEffect(() => {
@@ -126,7 +128,12 @@ export default function ProjectOverview() {
             batch_name: batchData.find(b => b.id === e.batch_id)?.name || 'Unknown Batch'
         }))
         const toVerifyCount = toVerifyList.length
-        const toCallCount = enrollments.filter(e => (e.verified_at || e.status === 'Verified') && !e.called_at).length
+
+        const toCallList = enrollments.filter(e => (e.verified_at || e.status === 'Verified') && !e.called_at).map(e => ({
+            ...e,
+            batch_name: batchData.find(b => b.id === e.batch_id)?.name || 'Unknown Batch'
+        }))
+        const toCallCount = toCallList.length
 
         // Batches per course
         const courses: Record<string, number> = {}
@@ -191,7 +198,8 @@ export default function ProjectOverview() {
             salesPerformance: salesPerformanceArg,
             toVerifyCount,
             toCallCount,
-            toVerifyList
+            toVerifyList,
+            toCallList
         })
     }
 
@@ -224,74 +232,155 @@ export default function ProjectOverview() {
             {showActionableStats ? (
                 /* SHO / SSHO / SALES_HEAD View - LIST ONLY */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-                            Pending Verifications
-                            <span style={{
-                                background: '#f97316', color: 'white',
-                                padding: '0.125rem 0.5rem', borderRadius: '999px',
-                                fontSize: '0.75rem', verticalAlign: 'middle'
-                            }}>
-                                {stats.toVerifyList.length}
-                            </span>
-                        </h3>
-                    </div>
 
-                    {stats.toVerifyList.length > 0 ? (
-                        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                            {stats.toVerifyList.map((student: any, index: number) => (
-                                <a
-                                    key={student.id}
-                                    href={`/dashboard/batch/${student.batch_id}`}
-                                    style={{ textDecoration: 'none', color: 'inherit' }}
-                                >
-                                    <div style={{
-                                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                        padding: '1rem 1.5rem',
-                                        borderBottom: index !== stats.toVerifyList.length - 1 ? '1px solid var(--border)' : 'none',
-                                        transition: 'background 0.2s',
-                                        background: 'var(--surface)'
-                                    }}
-                                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                                    >
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    {/* SALES HEAD: See Pending Verifications */}
+                    {userRole === 'SALES_HEAD' && (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                                    Pending Verifications
+                                    <span style={{
+                                        background: '#f97316', color: 'white',
+                                        padding: '0.125rem 0.5rem', borderRadius: '999px',
+                                        fontSize: '0.75rem', verticalAlign: 'middle'
+                                    }}>
+                                        {stats.toVerifyList.length}
+                                    </span>
+                                </h3>
+                            </div>
+
+                            {stats.toVerifyList.length > 0 ? (
+                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    {stats.toVerifyList.map((student: any, index: number) => (
+                                        <a
+                                            key={student.id}
+                                            href={`/dashboard/batch/${student.batch_id}`}
+                                            style={{ textDecoration: 'none', color: 'inherit' }}
+                                        >
                                             <div style={{
-                                                width: '40px', height: '40px', borderRadius: '50%',
-                                                background: '#ffedd5', color: '#c2410c',
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                fontWeight: 'bold'
-                                            }}>
-                                                {student.student_name.charAt(0).toUpperCase()}
-                                            </div>
-                                            <div>
-                                                <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>{student.student_name}</div>
-                                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                    Batch: {student.batch_name}
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '1rem 1.5rem',
+                                                borderBottom: index !== stats.toVerifyList.length - 1 ? '1px solid var(--border)' : 'none',
+                                                transition: 'background 0.2s',
+                                                background: 'var(--surface)'
+                                            }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{
+                                                        width: '40px', height: '40px', borderRadius: '50%',
+                                                        background: '#ffedd5', color: '#c2410c',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {student.student_name?.[0]?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>{student.student_name}</div>
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                            Batch: {student.batch_name}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{
+                                                        fontSize: '0.85rem', color: '#ea580c', fontWeight: 600,
+                                                        display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                                    }}>
+                                                        Action Required
+                                                        <Users size={16} />
+                                                    </div>
+                                                    <div style={{ color: 'var(--text-tertiary)' }}>→</div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                            <div style={{
-                                                fontSize: '0.85rem', color: '#ea580c', fontWeight: 600,
-                                                display: 'flex', alignItems: 'center', gap: '0.5rem'
-                                            }}>
-                                                Action Required
-                                                <Users size={16} />
-                                            </div>
-                                            <div style={{ color: 'var(--text-tertiary)' }}>→</div>
-                                        </div>
-                                    </div>
-                                </a>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All Caught Up!</div>
-                            <div>No students currently pending verification.</div>
-                        </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All Caught Up!</div>
+                                    <div>No students currently pending verification.</div>
+                                </div>
+                            )}
+                        </>
                     )}
+
+                    {/* SHO / SSHO: See Pending Calls */}
+                    {['SHO', 'SSHO'].includes(userRole || '') && (
+                        <>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
+                                    Pending Calls (Verified Students)
+                                    <span style={{
+                                        background: '#3b82f6', color: 'white',
+                                        padding: '0.125rem 0.5rem', borderRadius: '999px',
+                                        fontSize: '0.75rem', verticalAlign: 'middle'
+                                    }}>
+                                        {stats.toCallList.length}
+                                    </span>
+                                </h3>
+                            </div>
+
+                            {stats.toCallList.length > 0 ? (
+                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+                                    {stats.toCallList.map((student: any, index: number) => (
+                                        <a
+                                            key={student.id}
+                                            href={`/dashboard/batch/${student.batch_id}`}
+                                            style={{ textDecoration: 'none', color: 'inherit' }}
+                                        >
+                                            <div style={{
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '1rem 1.5rem',
+                                                borderBottom: index !== stats.toCallList.length - 1 ? '1px solid var(--border)' : 'none',
+                                                transition: 'background 0.2s',
+                                                background: 'var(--surface)'
+                                            }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{
+                                                        width: '40px', height: '40px', borderRadius: '50%',
+                                                        background: '#bfdbfe', color: '#1d4ed8',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        fontWeight: 'bold'
+                                                    }}>
+                                                        {student.student_name?.[0]?.toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>{student.student_name}</div>
+                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                                            Batch: {student.batch_name}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                    <div style={{
+                                                        fontSize: '0.85rem', color: '#2563eb', fontWeight: 600,
+                                                        display: 'flex', alignItems: 'center', gap: '0.5rem'
+                                                    }}>
+                                                        Call Student
+                                                        <Phone size={16} />
+                                                    </div>
+                                                    <div style={{ color: 'var(--text-tertiary)' }}>→</div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📞</div>
+                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All Calls Done!</div>
+                                    <div>No verified students waiting for a call.</div>
+                                </div>
+                            )}
+                        </>
+                    )}
+
                 </div>
             ) : (
                 /* Default Admin / CEO View - FULL DASHBOARD */
