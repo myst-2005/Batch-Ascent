@@ -87,7 +87,7 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
                 .from('batches')
                 .select('*')
                 .eq('id', id)
-                .single()
+                .maybeSingle()
 
             if (error) throw error
             setFormData(data)
