@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@supabase/postgrest-js": "^2.89.0",
     "@supabase/supabase-js": "^2.87.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",

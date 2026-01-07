@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { Save, ArrowLeft, History, Trash2 } from 'lucide-react'
 
 export default function EditBatchPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = use(params)
+    const paramsUnwrapped = use(params)
+    const id = decodeURIComponent(paramsUnwrapped.id).trim()
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
@@ -207,6 +208,7 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
     }
 
     if (loading) return <div>Loading...</div>
+    if (!formData) return <div style={{ padding: '2rem', textAlign: 'center' }}>Batch not found or you do not have permission to edit it.</div>
 
     return (
         <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto' }}>

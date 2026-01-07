@@ -466,9 +466,21 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             {/* Students List */}
             <div className="card">
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Users size={20} />
-                    Enrolled Students ({students.length})
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Users size={20} />
+                        Enrolled Students ({students.length})
+                    </div>
+                    <button
+                        onClick={() => fetchStudents(id)}
+                        title="Refresh List"
+                        style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            color: 'var(--text-secondary)', display: 'flex', alignItems: 'center'
+                        }}
+                    >
+                        <RefreshCw size={18} />
+                    </button>
                 </h3>
 
                 {students.length > 0 ? (
