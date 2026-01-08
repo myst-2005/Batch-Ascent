@@ -57,7 +57,7 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single()
 
-        if (roleError || !['ADMIN', 'SHO', 'SSHO', 'ACADEMIC_LEAD'].includes(userData?.role || '')) {
+        if (roleError || !['ADMIN', 'SHO', 'SSHO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userData?.role || '')) {
             return NextResponse.json({ error: 'Forbidden: Insufficient permissions' }, { status: 403 })
         }
 
@@ -256,13 +256,15 @@ export async function POST(request: Request) {
                     status: 'Verified'
                 }
             ])
+            .select() // Add select to return data or error better
 
         if (batchError) {
             throw new Error('Error linking student to batch: ' + batchError.message)
         }
 
-        // C. Update Sales Stats
+        // C. Update Sales Stats (This is the critical part user mentioned)
         if (salesPerson.sales_id) {
+            console.log(`Saving to sales_enrollments for SalesID: ${salesPerson.sales_id}`)
             const { error: salesEnrollError } = await supabaseAdmin
                 .from('sales_enrollments')
                 .insert({
@@ -270,10 +272,19 @@ export async function POST(request: Request) {
                     student_name: student_name,
                     student_phone: student_phone,
                     batch_id: batch_id,
-                    sales_id: salesPerson.sales_id
+                    sales_id: salesPerson.sales_id,
+                    created_at: now
                 })
 
-            if (salesEnrollError) console.error('Sales enrollment stat error:', salesEnrollError)
+            if (salesEnrollError) {
+                console.error('CRITICAL: Sales enrollment stat error:', salesEnrollError)
+                // Optionally throw to fail the REQUEST if this stat is mandatory
+                // throw new Error('Failed to save sales enrollment: ' + salesEnrollError.message)
+            } else {
+                console.log('Successfully saved to sales_enrollments')
+            }
+        } else {
+            console.warn('WARNING: No sales_id found for user, skipping sales_enrollments insert.')
         }
 
         return NextResponse.json({

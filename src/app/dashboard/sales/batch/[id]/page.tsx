@@ -421,15 +421,34 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
 
                                                         const data = res.data
                                                         if (data.Status === 'Verified') {
-                                                            alert('Verified successfully!')
-                                                            // Update local state to show verified
                                                             const now = new Date().toISOString()
 
-                                                            // Ideally update DB too, but for UI feedback:
-                                                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, verified_at: now, status: 'Verified' } : s))
+                                                            // Update Database first to ensure persistence
+                                                            const { error: dbError } = await supabase
+                                                                .from('student_batches')
+                                                                .update({ verified_at: now, status: 'Verified' })
+                                                                .eq('id', student.id)
 
-                                                            // Optional: Persist to DB if you have an API for it (omitted for now as requested)
-                                                            await supabase.from('student_batches').update({ verified_at: now, status: 'Verified' }).eq('id', student.id)
+                                                            if (dbError) {
+                                                                console.error('DB Update Error:', dbError)
+                                                                alert('Verification email sent, but database status update failed: ' + dbError.message)
+                                                                // Don't update local state if DB failed, so user knows it didn't stick
+                                                            } else {
+                                                                // Also update sales_enrollments if it exists
+                                                                const { error: salesError } = await supabase
+                                                                    .from('sales_enrollments')
+                                                                    .update({ verified_at: now, status: 'Verified' })
+                                                                    .eq('student_email', student.student_email)
+                                                                    .eq('batch_id', batch.id)
+
+                                                                if (salesError) {
+                                                                    console.error('Sales Enrollment Update Error:', salesError)
+                                                                    // We don't stop the flow here, but we log it.
+                                                                }
+
+                                                                alert('Verified successfully!')
+                                                                setStudents(prev => prev.map(s => s.id === student.id ? { ...s, verified_at: now, status: 'Verified' } : s))
+                                                            }
                                                         } else {
                                                             alert('Verification request sent.')
                                                         }
@@ -599,10 +618,32 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
 
                                                         const data = res.data
                                                         if (data.Status === 'Verified') {
-                                                            alert('Verified successfully!')
                                                             const now = new Date().toISOString()
-                                                            setStudents(prev => prev.map(s => s.id === student.id ? { ...s, verified_at: now, status: 'Verified' } : s))
-                                                            await supabase.from('student_batches').update({ verified_at: now, status: 'Verified' }).eq('id', student.id)
+
+                                                            // Update Database first to ensure persistence
+                                                            const { error: dbError } = await supabase
+                                                                .from('student_batches')
+                                                                .update({ verified_at: now, status: 'Verified' })
+                                                                .eq('id', student.id)
+
+                                                            if (dbError) {
+                                                                console.error('DB Update Error:', dbError)
+                                                                alert('Verification email sent, but database status update failed: ' + dbError.message)
+                                                            } else {
+                                                                // Also update sales_enrollments if it exists
+                                                                const { error: salesError } = await supabase
+                                                                    .from('sales_enrollments')
+                                                                    .update({ verified_at: now, status: 'Verified' })
+                                                                    .eq('student_email', student.student_email)
+                                                                    .eq('batch_id', batch.id)
+
+                                                                if (salesError) {
+                                                                    console.error('Sales Enrollment Update Error:', salesError)
+                                                                }
+
+                                                                alert('Verified successfully!')
+                                                                setStudents(prev => prev.map(s => s.id === student.id ? { ...s, verified_at: now, status: 'Verified' } : s))
+                                                            }
                                                         } else {
                                                             alert('Verification request sent.')
                                                         }

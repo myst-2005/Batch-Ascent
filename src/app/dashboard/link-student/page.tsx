@@ -125,6 +125,9 @@ export default function LinkStudentPage() {
             const data = await response.json()
 
             if (!response.ok) {
+                if (response.status === 409 && data.code === 'BATCH_FULL') {
+                    throw new Error(data.message || 'Batch is full. Logic handled by webhook.')
+                }
                 throw new Error(data.error || 'Failed to link student')
             }
 
@@ -139,6 +142,12 @@ export default function LinkStudentPage() {
 
         } catch (error: any) {
             console.error('Error linking student:', error)
+
+            // If the error message came from our 409 response, using data.message or similar
+            // But since fetch throws on !ok only if we don't parse body first...
+            // Actually, we parsed data above. The throw new Error(data.error) might mask the code.
+            // Let's rely on the alert.
+
             alert('Error: ' + error.message)
         } finally {
             setLoading(false)
@@ -250,7 +259,7 @@ export default function LinkStudentPage() {
                     >
                         All Schools
                     </button>
-                    {SCHOOLS.map(school => (
+                    {Array.from(new Set(batches.map(b => b.school).filter(Boolean))).sort().map(school => (
                         <button
                             key={school}
                             onClick={() => setFilters(prev => ({ ...prev, school: school, course: 'ALL' }))}
