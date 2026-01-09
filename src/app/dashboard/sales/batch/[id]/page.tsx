@@ -159,20 +159,34 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
         }
     }
 
-    const handleDeleteStudent = async (studentId: string) => {
+    const handleDeleteStudent = async (studentId: string, email: string) => {
         if (!confirm('Are you sure you want to remove this student? This action cannot be undone.')) return
 
         try {
-            const { error } = await supabase
+            // 1. Delete from sales_enrollments (Source of truth for Sales)
+            // Use maybe a direct delete based on id if it matches, but here studentId is from student_batches.
+            // A reliable way is delete where email AND batch_id match.
+            const { error: salesError } = await supabase
+                .from('sales_enrollments')
+                .delete()
+                .eq('student_email', email)
+                .eq('batch_id', id)
+
+            if (salesError) console.warn('Could not delete from sales_enrollments:', salesError)
+
+            // 2. Delete from student_batches
+            const { error: sbError } = await supabase
                 .from('student_batches')
                 .delete()
                 .eq('id', studentId)
 
-            if (error) throw error
+            if (sbError) throw sbError
 
             // Refresh list
             fetchStudents()
+            alert('Student removed successfully')
         } catch (error: any) {
+            console.error('Error deleting student:', error)
             alert('Error deleting student: ' + error.message)
         }
     }
@@ -477,7 +491,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
 
                                     {((!student.verified_at && student.status !== 'Verified') || ['SALES_HEAD'].includes(localStorage.getItem('userRole') || '')) && (
                                         <button
-                                            onClick={() => handleDeleteStudent(student.id)}
+                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
                                             style={{
                                                 background: 'rgba(239, 68, 68, 0.1)',
                                                 border: 'none',
