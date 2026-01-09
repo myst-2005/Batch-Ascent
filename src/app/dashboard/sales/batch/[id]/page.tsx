@@ -164,23 +164,32 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
 
         try {
             // 1. Delete from sales_enrollments (Source of truth for Sales)
-            // Use maybe a direct delete based on id if it matches, but here studentId is from student_batches.
-            // A reliable way is delete where email AND batch_id match.
-            const { error: salesError } = await supabase
+            const { data: salesData, error: salesError } = await supabase
                 .from('sales_enrollments')
                 .delete()
                 .eq('student_email', email)
                 .eq('batch_id', id)
+                .select()
 
-            if (salesError) console.warn('Could not delete from sales_enrollments:', salesError)
+            if (salesError) {
+                console.warn('Could not delete from sales_enrollments:', salesError)
+            } else if (!salesData || salesData.length === 0) {
+                console.warn('RLS Warning: No rows deleted from sales_enrollments. Permission likely denied.')
+            }
 
             // 2. Delete from student_batches
-            const { error: sbError } = await supabase
+            const { data: sbData, error: sbError } = await supabase
                 .from('student_batches')
                 .delete()
                 .eq('id', studentId)
+                .select()
 
             if (sbError) throw sbError
+
+            // Check if RLS prevented deletion
+            if (!sbData || sbData.length === 0) {
+                throw new Error("Deletion failed. You may not have permission to delete this student.")
+            }
 
             // Refresh list
             fetchStudents()

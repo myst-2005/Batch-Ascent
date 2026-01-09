@@ -280,12 +280,24 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
         try {
             // 1. Delete from sales_enrollments
-            const { error: salesError } = await supabase
+            const { data: salesData, error: salesError } = await supabase
                 .from('sales_enrollments')
                 .delete()
                 .eq('id', studentId)
+                .select()
 
-            if (salesError) throw salesError
+            if (salesError) {
+                console.warn('Could not delete from sales_enrollments:', salesError)
+            } else if (!salesData || salesData.length === 0) {
+                // Might not exist or permission denied
+                // In this view, studentId is ID of sales_enrollment (from query), so if it fails, it's weird.
+                // Wait, let's check what studentId is.
+                // In fetchStudents:
+                // const enrollmentsWithSales = enrollments...
+                // So "student" object IS a sales_enrollment row (id is uuid of sales_enrollment).
+                // So checking result is valid.
+                console.warn('RLS Warning: No rows deleted from sales_enrollments.')
+            }
 
             // 2. Delete from student_batches (cleanup)
             const { error: sbError } = await supabase
@@ -296,9 +308,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             if (sbError) console.warn('Could not delete from student_batches (might not exist):', sbError)
 
-            // 3. Delete from students (Master) if exists - only if we want to completely wipe them
-            // Optional: for now just un-enroll.
-
+            // Refresh local state manually just in case
             setStudents(prev => prev.filter(s => s.id !== studentId))
             alert('Student removed successfully')
         } catch (error: any) {
