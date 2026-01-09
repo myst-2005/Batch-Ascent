@@ -17,7 +17,11 @@ interface Batch {
     enrolled_count?: number
 }
 
-export default function BatchList() {
+interface BatchListProps {
+    view?: 'current' | 'past'
+}
+
+export default function BatchList({ view = 'current' }: BatchListProps) {
     const router = useRouter()
     const [batches, setBatches] = useState<Batch[]>([])
     const [loading, setLoading] = useState(true)
@@ -74,7 +78,7 @@ export default function BatchList() {
 
     useEffect(() => {
         fetchBatches()
-    }, [])
+    }, [view]) // Refetch if view changes
 
     const fetchBatches = async () => {
         try {
@@ -105,6 +109,19 @@ export default function BatchList() {
                 // Or we could enhance query, but client-side is fine for dashboard list usually.
             }
 
+            // Date filtering for Past/Current batches
+            const twoDaysAgo = new Date()
+            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
+            const dateStr = twoDaysAgo.toISOString()
+
+            if (view === 'past') {
+                // Orientation finished > 2 days ago
+                query = query.lt('start_date', dateStr)
+            } else {
+                // Upcoming or finished within last 2 days
+                query = query.gte('start_date', dateStr)
+            }
+
             const { data, error } = await query
 
             if (error) throw error
@@ -117,7 +134,6 @@ export default function BatchList() {
                         .select('*', { count: 'exact', head: false }) // changed head:true to head:false to get data
                         .eq('batch_id', batch.id)
 
-                    console.log(`Enrollments for batch ${batch.id}:`, enrollmentData)
                     return { ...batch, enrolled_count: count || 0 }
                 }))
                 setBatches(batchesWithCounts)

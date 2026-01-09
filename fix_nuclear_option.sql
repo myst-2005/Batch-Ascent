@@ -41,6 +41,7 @@ CREATE POLICY "Admin View Enrollments" ON sales_enrollments FOR SELECT USING (EX
 CREATE POLICY "Staff View Enrollments" ON sales_enrollments FOR SELECT USING (true); -- Relaxed for now to stop errors
 CREATE POLICY "Enable Insert Enrollments" ON sales_enrollments FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Update Sales Enrollments" ON sales_enrollments FOR UPDATE USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD', 'SHO')));
+CREATE POLICY "Delete Sales Enrollments" ON sales_enrollments FOR DELETE USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD', 'SHO')));
 
 -- STUDENTS & STUDENT BATCHES
 CREATE POLICY "Read All" ON students FOR SELECT USING (true);

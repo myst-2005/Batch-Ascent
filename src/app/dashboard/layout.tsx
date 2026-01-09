@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp, History } from 'lucide-react'
 import styles from './dashboard.module.css'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Status', href: '/dashboard/status', icon: TrendingUp, roles: ['ADMIN', 'CEO', 'PROJECT_LEAD'] },
         { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD'] },
         { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD'] },
+        { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
         { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO', 'ADMIN', 'SALES_HEAD'] },
         { label: 'Manage Schools', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN'] },
