@@ -1,45 +1,27 @@
--- Enable RLS just in case it's not
+BEGIN;
+
+-- 1. Sales Enrollments Delete Policy
 ALTER TABLE sales_enrollments ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Delete Sales Enrollments" ON sales_enrollments;
+CREATE POLICY "Delete Sales Enrollments" ON sales_enrollments FOR DELETE 
+USING (
+  EXISTS (
+    SELECT 1 FROM users 
+    WHERE users.id = auth.uid() 
+    AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD',)
+  )
+);
+
+-- 2. Student Batches Delete Policy (Reinforcing)
 ALTER TABLE student_batches ENABLE ROW LEVEL SECURITY;
-
--- 1. DELETE Policy for sales_enrollments
-DROP POLICY IF EXISTS "Admins can delete enrollments" ON sales_enrollments;
-
-CREATE POLICY "Admins can delete enrollments"
-ON sales_enrollments
-FOR DELETE
+DROP POLICY IF EXISTS "Delete SB" ON student_batches;
+CREATE POLICY "Delete SB" ON student_batches FOR DELETE 
 USING (
   EXISTS (
     SELECT 1 FROM users 
     WHERE users.id = auth.uid() 
-    AND users.role IN ('ADMIN', 'CEO')
+    AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD',)
   )
 );
 
--- 2. DELETE Policy for student_batches
-DROP POLICY IF EXISTS "Admins can delete student_batches" ON student_batches;
-
-CREATE POLICY "Admins can delete student_batches"
-ON student_batches
-FOR DELETE
-USING (
-  EXISTS (
-    SELECT 1 FROM users 
-    WHERE users.id = auth.uid() 
-    AND users.role IN ('ADMIN', 'CEO')
-  )
-);
-
--- 3. DELETE Policy for batch_history
-DROP POLICY IF EXISTS "Admins can delete batch_history" ON batch_history;
-
-CREATE POLICY "Admins can delete batch_history"
-ON batch_history
-FOR DELETE
-USING (
-  EXISTS (
-    SELECT 1 FROM users 
-    WHERE users.id = auth.uid() 
-    AND users.role IN ('ADMIN', 'CEO')
-  )
-);
+COMMIT;

@@ -475,7 +475,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                         )
                                     )}
 
-                                    {(!(student.verified_at || student.status === 'Verified')) && (
+                                    {((!student.verified_at && student.status !== 'Verified') || ['SALES_HEAD'].includes(localStorage.getItem('userRole') || '')) && (
                                         <button
                                             onClick={() => handleDeleteStudent(student.id)}
                                             style={{
@@ -492,7 +492,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                                 fontWeight: '500',
                                                 transition: 'background 0.2s'
                                             }}
-                                            title="Remove student"
+                                            title={student.verified_at ? "Remove verified student (Sales Head only)" : "Remove student"}
                                         >
                                             <Trash2 size={16} />
                                             Remove

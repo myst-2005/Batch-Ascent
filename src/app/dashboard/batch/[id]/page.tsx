@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2 } from 'lucide-react'
 
 interface Student {
     id: string
@@ -275,6 +275,38 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         }
     }
 
+    const handleDeleteStudent = async (studentId: string, email: string) => {
+        if (!confirm('Are you sure you want to remove this student? This action cannot be undone.')) return
+
+        try {
+            // 1. Delete from sales_enrollments
+            const { error: salesError } = await supabase
+                .from('sales_enrollments')
+                .delete()
+                .eq('id', studentId)
+
+            if (salesError) throw salesError
+
+            // 2. Delete from student_batches (cleanup)
+            const { error: sbError } = await supabase
+                .from('student_batches')
+                .delete()
+                .eq('student_email', email)
+                .eq('batch_id', id)
+
+            if (sbError) console.warn('Could not delete from student_batches (might not exist):', sbError)
+
+            // 3. Delete from students (Master) if exists - only if we want to completely wipe them
+            // Optional: for now just un-enroll.
+
+            setStudents(prev => prev.filter(s => s.id !== studentId))
+            alert('Student removed successfully')
+        } catch (error: any) {
+            console.error('Error deleting student:', error)
+            alert('Error deleting student: ' + error.message)
+        }
+    }
+
     const handleCallStudent = async (studentId: string, phone: string, undo: boolean = false) => {
         try {
             let updateData = {}
@@ -383,6 +415,10 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             ['SALES_HEAD'].includes(userRole || '') &&
             (userSchool === batch.school)
         )
+    )
+
+    const canDelete = (
+        ['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(userRole || '')
     )
 
     return (
@@ -631,6 +667,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                     <CheckCircle size={12} /> Verify Now
                                                 </button>
                                             )}
+
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                    style={{
+                                                        fontSize: '0.75rem', fontWeight: '600',
+                                                        color: 'var(--error)', background: 'transparent',
+                                                        border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                                        marginLeft: '0.5rem'
+                                                    }}
+                                                    title="Remove Student"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                            )}
                                         </div>
                                     ) : (
                                         <>
@@ -719,6 +771,20 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                             {student.onboarding_completed ? 'Undo' : 'Mark Onboarded'}
                                                         </button>
                                                     </div>
+
+                                                    {canDelete && (
+                                                        <button
+                                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                            style={{
+                                                                fontSize: '0.75rem', fontWeight: '500',
+                                                                color: 'var(--error)', textDecoration: 'underline',
+                                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                                marginTop: '0.5rem'
+                                                            }}
+                                                        >
+                                                            Remove Student
+                                                        </button>
+                                                    )}
                                                 </>
                                             )}
                                         </>
