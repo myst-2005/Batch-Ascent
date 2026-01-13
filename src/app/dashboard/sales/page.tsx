@@ -106,10 +106,10 @@ export default function SalesDashboard() {
 
             if (error) throw error
 
-            // Fetch enrollment counts for each batch
+            // Fetch enrollment counts for each batch (from sales_enrollments now)
             const batchesWithCounts = await Promise.all(data.map(async (batch) => {
                 const { count } = await supabase
-                    .from('student_batches')
+                    .from('sales_enrollments')
                     .select('*', { count: 'exact', head: true })
                     .eq('batch_id', batch.id)
 
@@ -142,7 +142,7 @@ export default function SalesDashboard() {
 
                     // Total School Enrollments
                     const { count: totalCount } = await supabase
-                        .from('student_batches')
+                        .from('sales_enrollments')
                         .select('*', { count: 'exact', head: true })
                         .in('batch_id', batchIds)
 
@@ -152,10 +152,10 @@ export default function SalesDashboard() {
                     startOfMonth.setHours(0, 0, 0, 0)
 
                     const { count: monthCount } = await supabase
-                        .from('student_batches')
+                        .from('sales_enrollments')
                         .select('*', { count: 'exact', head: true })
                         .in('batch_id', batchIds)
-                        .gte('linked_at', startOfMonth.toISOString()) // Assuming linked_at is used for enrollment time
+                        .gte('enrolled_at', startOfMonth.toISOString())
 
                     setStats({
                         total_enrollments: totalCount || 0,

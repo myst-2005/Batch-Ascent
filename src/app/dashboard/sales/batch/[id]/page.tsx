@@ -79,11 +79,18 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
         if (!editingStudent || !newEmail || !batch) return
 
         try {
-            // 1. Update Database
+            // 1. Update Database (Sales Enrollments)
             const { error } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .update({ student_email: newEmail })
                 .eq('id', editingStudent.id)
+
+            // Also try to update student_batches if it exists (by match)
+            await supabase
+                .from('student_batches')
+                .update({ student_email: newEmail })
+                .eq('student_email', editingStudent.student_email)
+                .eq('batch_id', batch.id)
 
             if (error) throw error
 
@@ -167,8 +174,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
             const { data: salesData, error: salesError } = await supabase
                 .from('sales_enrollments')
                 .delete()
-                .eq('student_email', email)
-                .eq('batch_id', id)
+                .eq('id', studentId)
                 .select()
 
             if (salesError) {
@@ -181,15 +187,15 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
             const { data: sbData, error: sbError } = await supabase
                 .from('student_batches')
                 .delete()
-                .eq('id', studentId)
+                .eq('student_email', email)
+                .eq('batch_id', id)
                 .select()
 
             if (sbError) throw sbError
 
-            // Check if RLS prevented deletion
-            if (!sbData || sbData.length === 0) {
-                throw new Error("Deletion failed. You may not have permission to delete this student.")
-            }
+            // Check if RLS prevented deletion (only if we expect it to exist, but it might not if only in sales_enrollments)
+            // We loosen this check because the student might only be in sales_enrollments now.
+            // if (!sbData || sbData.length === 0) { ... }
 
             // Refresh list
             fetchStudents()
@@ -204,7 +210,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
         try {
             // 1. Fetch enrollments
             const { data: enrollments, error } = await supabase
-                .from('student_batches')
+                .from('sales_enrollments')
                 .select('*')
                 .eq('batch_id', id)
                 .order('linked_at', { ascending: false })
@@ -212,16 +218,38 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
             if (error) throw error
 
             // 2. Fetch Sales Persons manually
-            const salesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            const rawSalesIds: string[] = enrollments?.map((e: any) => e.sales_id).filter(Boolean) || []
+            const salesIds = Array.from(new Set(rawSalesIds)) // Deduplicate
             let salesMap = new Map()
 
             if (salesIds.length > 0) {
-                const { data: salesUsers } = await supabase
-                    .from('users')
-                    .select('id, name, sales_id')
-                    .or(`sales_id.in.(${salesIds.join(',')}),id.in.(${salesIds.join(',')})`)
+                // Robust fetch: Check both ID (legacy UUIDs) and sales_id (new String IDs)
+                const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+                const uuidSalesIds = salesIds.filter(id => uuidPattern.test(id))
+                const stringSalesIds = salesIds.filter(id => !uuidPattern.test(id))
 
-                salesUsers?.forEach((u: any) => {
+                let usersById: any[] = []
+                let usersBySalesId: any[] = []
+
+                if (uuidSalesIds.length > 0) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('id, name, sales_id')
+                        .in('id', uuidSalesIds)
+                    usersById = data || []
+                }
+
+                if (stringSalesIds.length > 0) {
+                    const { data } = await supabase
+                        .from('users')
+                        .select('id, name, sales_id')
+                        .in('sales_id', stringSalesIds)
+                    usersBySalesId = data || []
+                }
+
+                const salesUsers = [...usersById, ...usersBySalesId]
+
+                salesUsers.forEach((u: any) => {
                     if (u.sales_id) salesMap.set(u.sales_id, u)
                     if (u.id) salesMap.set(u.id, u)
                 })
@@ -230,7 +258,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
             // 3. Map Name to Enrollment
             const studentsWithSales = enrollments?.map((e: any) => ({
                 ...e,
-                sales_person: salesMap.get(e.sales_id)
+                sales_person: e.sales_id ? salesMap.get(e.sales_id) : null
             }))
 
             setStudents(studentsWithSales || [])
