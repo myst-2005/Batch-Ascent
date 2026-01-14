@@ -47,6 +47,7 @@ CREATE POLICY "Delete Sales Enrollments" ON sales_enrollments FOR DELETE USING (
 CREATE POLICY "Read All" ON students FOR SELECT USING (true);
 CREATE POLICY "Read All SB" ON student_batches FOR SELECT USING (true);
 CREATE POLICY "Insert Students" ON students FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Delete Students" ON students FOR DELETE USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD')));
 CREATE POLICY "Insert SB" ON student_batches FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 CREATE POLICY "Update SB" ON student_batches FOR UPDATE USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD', 'SHO')));
 CREATE POLICY "Delete SB" ON student_batches FOR DELETE USING (EXISTS (SELECT 1 FROM users WHERE users.id = auth.uid() AND users.role IN ('ADMIN', 'CEO', 'SALES_HEAD', 'ACADEMIC_LEAD', 'SHO')));

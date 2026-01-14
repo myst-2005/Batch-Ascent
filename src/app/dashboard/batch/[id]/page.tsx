@@ -428,7 +428,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     )
 
     const canDelete = (
-        ['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(userRole || '')
+        ['ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '')
     )
 
     return (
