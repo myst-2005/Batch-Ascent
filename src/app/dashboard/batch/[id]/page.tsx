@@ -56,6 +56,10 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             setUserSalesId(localStorage.getItem('salesId'))
         }
 
+
+        console.log('User Role:', userRole) // Note: userRole state might not be updated immediately in this effect cycle unless we add it to dep, but we are inside the effect where we just set it from storage? No, setState is async. 
+        // Better to rely on the console log inside the if block or just log from storage.
+
         // Ensure ID is fully decoded (e.g. if URL has %2F it might be double encoded or just encoded once)
         const dbId = decodeURIComponent(id)
         console.log('Fetching batch details for ID (raw):', id)
@@ -431,6 +435,8 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         ['ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '')
     )
 
+
+
     return (
         <div className="animate-fade-in">
             <button
@@ -725,6 +731,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                             }}
                                                         >
                                                             <Phone size={12} /> Call Student
+                                                        </button>
+                                                    )}
+
+                                                    {canDelete && (
+                                                        <button
+                                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                            style={{
+                                                                fontSize: '0.75rem', fontWeight: '600',
+                                                                color: 'var(--error)', background: 'transparent',
+                                                                border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
+                                                                marginLeft: '0.5rem'
+                                                            }}
+                                                            title="Remove Student"
+                                                        >
+                                                            <Trash2 size={12} />
                                                         </button>
                                                     )}
                                                 </>

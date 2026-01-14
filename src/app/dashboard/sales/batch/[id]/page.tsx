@@ -123,9 +123,14 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
         }
     }
 
+    const [userRole, setUserRole] = useState<string | null>(null)
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setSalesId(localStorage.getItem('salesId'))
+            const role = localStorage.getItem('userRole')
+            setUserRole(role)
+            console.log('Sales View - User Role:', role)
         }
         fetchBatchDetails()
         fetchStudents()
@@ -526,7 +531,7 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                         )
                                     )}
 
-                                    {((!student.verified_at && student.status !== 'Verified') || ['SALES_HEAD'].includes(localStorage.getItem('userRole') || '')) && (
+                                    {((!student.verified_at && student.status !== 'Verified') || ['SALES_HEAD', 'ACADEMIC_LEAD'].includes(userRole || '')) && (
                                         <button
                                             onClick={() => handleDeleteStudent(student.id, student.student_email)}
                                             style={{
@@ -722,6 +727,30 @@ export default function SalesBatchDetailsPage({ params }: { params: Promise<{ id
                                                 Verify
                                             </button>
                                         )
+                                    )}
+                                    {((!student.verified_at && student.status !== 'Verified') || ['SALES_HEAD', 'ACADEMIC_LEAD'].includes(userRole || '')) && (
+                                        <button
+                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                            style={{
+                                                background: 'rgba(239, 68, 68, 0.1)',
+                                                border: 'none',
+                                                color: 'var(--error)',
+                                                cursor: 'pointer',
+                                                padding: '0.5rem 1rem',
+                                                borderRadius: '0.375rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.5rem',
+                                                fontSize: '0.875rem',
+                                                fontWeight: '500',
+                                                transition: 'background 0.2s',
+                                                marginLeft: '0.5rem'
+                                            }}
+                                            title={student.verified_at ? "Remove verified student (Sales Head only)" : "Remove student"}
+                                        >
+                                            <Trash2 size={16} />
+                                            Remove
+                                        </button>
                                     )}
                                 </div>
                             </div>
