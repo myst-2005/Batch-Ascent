@@ -329,8 +329,6 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                 updateData = { called_at: null }
             } else {
                 updateData = { called_at: new Date().toISOString() }
-                // Open Dialer
-                window.location.href = `tel:${phone}`
             }
 
             const { error } = await supabase
@@ -341,6 +339,11 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             if (error) throw error
 
             setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updateData } : s))
+
+            // Open Dialer AFTER saving
+            if (!undo) {
+                window.location.href = `tel:${phone}`
+            }
         } catch (error: any) {
             console.error('Error updating call status:', error)
             alert('Error updating call status: ' + error.message)
