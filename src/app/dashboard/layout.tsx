@@ -40,6 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, roles: ['SHO', 'ACADEMIC_LEAD', 'ADMIN', 'PROJECT_LEAD', 'SSHO', 'SALES_HEAD', 'CEO'] },
         { label: 'Status', href: '/dashboard/status', icon: TrendingUp, roles: ['ADMIN', 'CEO', 'PROJECT_LEAD'] },
         { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD'] },
+        { label: 'Sales Intimation', href: '/dashboard/sales/intimation', icon: PlusCircle, roles: ['SALES', 'SALES_HEAD'] },
         { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD'] },
         { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
