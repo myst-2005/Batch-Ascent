@@ -16,44 +16,31 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
     const [showHistory, setShowHistory] = useState(false)
     const [userSchool, setUserSchool] = useState<string | null>(null)
 
-    const courses = [
-        {
-            category: "Digital Marketing",
-            items: [
-                "AI Integrated Basic to Advanced Digital Marketing",
-                "Performance Marketing Mastery",
-                "Social Media Mastery"
-            ]
-        },
-        {
-            category: "Design",
-            items: [
-                "CDC",
-                "Graphic Design",
-                "Branding",
-                "UI/UX",
-                "Video Editing"
-            ]
-        },
-        {
-            category: "Tech",
-            items: [
-                "Python",
-                "N8N",
-                "Data Analytics",
-                "Applied AI"
-            ]
-        },
-        {
-            category: "Finance",
-            items: [
-                "Advanced Practical Accounting and Financial Intelligence",
-                "Advanced Taxation Course",
-                "HACA Scale Up",
-                "Tax Practitioner Bootcamp"
-            ]
+    const [availableCourses, setAvailableCourses] = useState<any[]>([])
+    const [schoolsList, setSchoolsList] = useState<any[]>([])
+
+    const fetchCourses = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('courses')
+                .select('*')
+                .order('name')
+
+            if (error) throw error
+            if (data) setAvailableCourses(data)
+        } catch (error) {
+            console.error('Error fetching courses:', error)
         }
-    ]
+    }
+
+    const fetchSchools = async () => {
+        try {
+            const { data } = await supabase.from('schools').select('*').order('name')
+            if (data) setSchoolsList(data)
+        } catch (err) {
+            console.error('Error fetching schools:', err)
+        }
+    }
 
     useEffect(() => {
         if (typeof window !== 'undefined') {
@@ -61,6 +48,8 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
         }
         fetchBatchDetails()
         fetchHistory()
+        fetchCourses()
+        fetchSchools()
     }, [])
 
     const [availableSHOs, setAvailableSHOs] = useState<any[]>([])
@@ -276,25 +265,15 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
                             required
                         >
                             <option value="">Select Course</option>
-                            {courses
-                                .filter(category => {
-                                    if (!userSchool) return true
-                                    const school = userSchool.toLowerCase()
-                                    const cat = category.category.toLowerCase()
-
-                                    if (school.includes('marketing') && cat.includes('marketing')) return true
-                                    if (school.includes('design') && cat.includes('design')) return true
-                                    if ((school.includes('tech') || school.includes('engineering') || school.includes('software') || school.includes('it')) && cat.includes('tech')) return true
-                                    if ((school.includes('finance') || school.includes('account') || school.includes('business')) && cat.includes('finance')) return true
-
-                                    return false
+                            {availableCourses
+                                .filter(course => {
+                                    if (!formData.school) return true
+                                    return course.school_name === formData.school
                                 })
-                                .map((category) => (
-                                    <optgroup key={category.category} label={category.category}>
-                                        {category.items.map((course) => (
-                                            <option key={course} value={course}>{course}</option>
-                                        ))}
-                                    </optgroup>
+                                .map((course) => (
+                                    <option key={course.id} value={course.name}>
+                                        {course.name} ({course.code})
+                                    </option>
                                 ))}
                         </select>
                     </div>

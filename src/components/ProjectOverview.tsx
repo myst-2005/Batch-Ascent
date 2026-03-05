@@ -57,8 +57,14 @@ export default function ProjectOverview() {
                 }
             } else {
                 const userSchool = localStorage.getItem('userSchool')
+                const userName = localStorage.getItem('userName')
+
                 if (userSchool) {
                     batchQuery = batchQuery.eq('school', userSchool)
+                }
+
+                if (['SHO', 'SSHO'].includes(role || '') && userName) {
+                    batchQuery = batchQuery.eq('sho_name', userName)
                 }
             }
 

@@ -45,7 +45,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
         { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO', 'ADMIN', 'SALES_HEAD'] },
-        { label: 'Manage Schools', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN'] },
+        { label: 'Manage Schools & Courses', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN'] },
         { label: 'Manage Users', href: '/dashboard/admin/users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN'] },
         { label: 'Approve Users', href: '/dashboard/admin/approve-users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN'] },
     ]
