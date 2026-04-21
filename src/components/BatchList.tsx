@@ -301,7 +301,7 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
                                     {/* Action Buttons: Edit & Delete */}
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                         {/* Edit Button: Academic Lead */}
-                                        {typeof window !== 'undefined' && localStorage.getItem('userRole') === 'ACADEMIC_LEAD' && (
+                                        {typeof window !== 'undefined' && ['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(localStorage.getItem('userRole') || '') && (
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation()
