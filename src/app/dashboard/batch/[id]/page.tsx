@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2 } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit } from 'lucide-react'
 
 interface Student {
     id: string
@@ -453,7 +453,18 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             {/* Batch Info Card */}
             <div className="card" style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1.5rem' }}>{batch.name}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{batch.name}</h2>
+                    {['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(userRole || '') && (
+                        <button
+                            onClick={() => router.push(`/dashboard/batch/${id}/edit`)}
+                            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.375rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem' }}
+                            title="Edit Batch"
+                        >
+                            <Edit size={15} /> Edit Batch
+                        </button>
+                    )}
+                </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                     <div>
                         <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.25rem' }}>Batch ID</p>
