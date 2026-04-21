@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X } from 'lucide-react'
 
 interface Student {
     id: string
@@ -49,6 +49,11 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const [editingStudentId, setEditingStudentId] = useState<string | null>(null)
     const [tempEmail, setTempEmail] = useState('')
 
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [addLoading, setAddLoading] = useState(false)
+    const [salesPersons, setSalesPersons] = useState<{ id: string; name: string; sales_id: string; school: string }[]>([])
+    const [addForm, setAddForm] = useState({ student_name: '', student_email: '', student_phone: '', sales_user_id: '' })
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setUserRole(localStorage.getItem('userRole'))
@@ -67,7 +72,46 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
         fetchBatchDetails(dbId)
         fetchStudents(dbId)
+        fetchSalesPersons()
     }, [id])
+
+    const fetchSalesPersons = async () => {
+        const { data } = await supabase
+            .from('users')
+            .select('id, name, sales_id, school')
+            .or('role.eq.SALES,role.eq.SALES_EXECUTIVE,role.eq.SALES_TEAM_LEAD')
+            .order('name')
+        if (data) setSalesPersons(data)
+    }
+
+    const handleAddStudent = async () => {
+        if (!addForm.student_name || !addForm.student_email || !addForm.student_phone || !addForm.sales_user_id) {
+            alert('Please fill all fields')
+            return
+        }
+        setAddLoading(true)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) throw new Error('Not authenticated')
+
+            const res = await fetch('/api/link-student', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+                body: JSON.stringify({ ...addForm, batch_id: id })
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Failed to add student')
+
+            setShowAddModal(false)
+            setAddForm({ student_name: '', student_email: '', student_phone: '', sales_user_id: '' })
+            fetchStudents(id)
+            alert('Student added successfully!')
+        } catch (err: any) {
+            alert('Error: ' + err.message)
+        } finally {
+            setAddLoading(false)
+        }
+    }
 
     // ... (fetchBatchDetails, fetchStudents)
 
@@ -530,6 +574,49 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
             </div>
 
+            {/* Add Student Modal */}
+            {showAddModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '480px', position: 'relative' }}>
+                        <button onClick={() => setShowAddModal(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <X size={20} />
+                        </button>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <UserPlus size={20} /> Add Student to {batch?.name}
+                        </h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label className="label">Full Name</label>
+                                <input className="input" placeholder="e.g. John Doe" value={addForm.student_name} onChange={e => setAddForm({ ...addForm, student_name: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="label">Email Address</label>
+                                <input className="input" type="email" placeholder="student@example.com" value={addForm.student_email} onChange={e => setAddForm({ ...addForm, student_email: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="label">Phone Number</label>
+                                <input className="input" type="tel" placeholder="+91 XXXXX XXXXX" value={addForm.student_phone} onChange={e => setAddForm({ ...addForm, student_phone: e.target.value })} />
+                            </div>
+                            <div>
+                                <label className="label">Sales Person</label>
+                                <select className="input" value={addForm.sales_user_id} onChange={e => setAddForm({ ...addForm, sales_user_id: e.target.value })}>
+                                    <option value="">Select sales person...</option>
+                                    {salesPersons.filter(s => !batch?.school || !s.school || s.school === batch.school).map(s => (
+                                        <option key={s.id} value={s.id}>{s.name} {s.sales_id ? `(${s.sales_id})` : ''}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddModal(false)}>Cancel</button>
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAddStudent} disabled={addLoading}>
+                                    {addLoading ? 'Adding...' : 'Add Student'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Students List */}
             <div className="card">
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -537,16 +624,24 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                         <Users size={20} />
                         Enrolled Students ({students.length})
                     </div>
-                    <button
-                        onClick={() => fetchStudents(id)}
-                        title="Refresh List"
-                        style={{
-                            background: 'none', border: 'none', cursor: 'pointer',
-                            color: 'var(--text-secondary)', display: 'flex', alignItems: 'center'
-                        }}
-                    >
-                        <RefreshCw size={18} />
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {['ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SHO', 'SSHO', 'SALES_HEAD'].includes(userRole || '') && (
+                            <button
+                                onClick={() => setShowAddModal(true)}
+                                className="btn btn-primary"
+                                style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem', padding: '0.375rem 0.75rem' }}
+                            >
+                                <UserPlus size={16} /> Add Student
+                            </button>
+                        )}
+                        <button
+                            onClick={() => fetchStudents(id)}
+                            title="Refresh List"
+                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}
+                        >
+                            <RefreshCw size={18} />
+                        </button>
+                    </div>
                 </h3>
 
                 {students.length > 0 ? (
@@ -822,13 +917,14 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         <button
                                                             onClick={() => handleDeleteStudent(student.id, student.student_email)}
                                                             style={{
-                                                                fontSize: '0.75rem', fontWeight: '500',
-                                                                color: 'var(--error)', textDecoration: 'underline',
-                                                                background: 'none', border: 'none', cursor: 'pointer',
+                                                                fontSize: '0.75rem', fontWeight: '600',
+                                                                color: 'white', background: 'var(--error, #ef4444)',
+                                                                border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
+                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
                                                                 marginTop: '0.5rem'
                                                             }}
                                                         >
-                                                            Remove Student
+                                                            <Trash2 size={12} /> Remove
                                                         </button>
                                                     )}
                                                 </>
