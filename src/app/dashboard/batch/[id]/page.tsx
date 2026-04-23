@@ -88,10 +88,16 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     }, [id])
 
     const fetchAllBatches = async () => {
-        const { data } = await supabase
-            .from('batches')
-            .select('id, name, course, school')
-            .order('name')
+        const role = typeof window !== 'undefined' ? localStorage.getItem('userRole') : null
+        const school = typeof window !== 'undefined' ? localStorage.getItem('userSchool') : null
+
+        let query = supabase.from('batches').select('id, name, course, school').order('name')
+
+        if (role === 'ACADEMIC_LEAD' && school) {
+            query = query.eq('school', school)
+        }
+
+        const { data } = await query
         if (data) setAllBatches(data)
     }
 
@@ -740,7 +746,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                 <select className="input" value={selectedTransferBatch} onChange={e => setSelectedTransferBatch(e.target.value)}>
                                     <option value="">Choose batch...</option>
                                     {allBatches.filter(b => b.id !== id).map(b => (
-                                        <option key={b.id} value={b.id}>{b.name} — {b.course} ({b.school})</option>
+                                        <option key={b.id} value={b.id}>[{b.id}] {b.name} — {b.course} ({b.school})</option>
                                     ))}
                                 </select>
                             </div>
