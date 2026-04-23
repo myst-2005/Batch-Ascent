@@ -272,8 +272,10 @@ export default function AdminUsersPage() {
                                                 setSavingId(user.id)
                                                 setSavedId(null)
                                                 try {
+                                                    // Try API route first (handles ACADEMIC_LEAD demotion logic)
                                                     const { data: { session } } = await supabase.auth.getSession()
                                                     if (!session) throw new Error('Session expired — please refresh the page')
+
                                                     const res = await fetch('/api/update-user', {
                                                         method: 'POST',
                                                         headers: {
@@ -288,7 +290,20 @@ export default function AdminUsersPage() {
                                                         })
                                                     })
                                                     const data = await res.json()
-                                                    if (!res.ok) throw new Error(data.error || 'Failed to update')
+
+                                                    if (!res.ok) {
+                                                        // API failed — fall back to direct Supabase update
+                                                        const { error: directError } = await supabase
+                                                            .from('users')
+                                                            .update({
+                                                                role: user.role,
+                                                                school: user.school || null,
+                                                                sales_id: user.sales_id || null
+                                                            })
+                                                            .eq('id', user.id)
+                                                        if (directError) throw new Error(data.error || directError.message)
+                                                    }
+
                                                     setSavedId(user.id)
                                                     setTimeout(() => setSavedId(null), 2000)
                                                     await fetchUsers()

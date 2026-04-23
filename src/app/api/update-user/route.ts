@@ -82,14 +82,19 @@ export async function POST(request: Request) {
             }
         }
 
-        const { error } = await supabaseAdmin
+        const { data: updated, error } = await supabaseAdmin
             .from('users')
             .update(updateData)
             .eq('id', id)
+            .select('id, role')
 
         if (error) throw error
 
-        return NextResponse.json({ success: true })
+        if (!updated || updated.length === 0) {
+            throw new Error(`Update matched 0 rows for user id: ${id}. Check if the ID exists in the users table.`)
+        }
+
+        return NextResponse.json({ success: true, updated: updated[0] })
 
     } catch (error: any) {
         console.error('Update user error:', error)
