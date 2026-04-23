@@ -57,10 +57,10 @@ export async function POST(request: Request) {
         if (sales_id !== undefined) updateData.sales_id = sales_id
 
         // Validation: Check if Academic Lead already exists for this school
-        if ((role === 'ACADEMIC_LEAD' || (role === undefined && updateData.role === 'ACADEMIC_LEAD')) && (school || updateData.school)) {
+        if (role === 'ACADEMIC_LEAD' && (school || updateData.school)) {
             const targetSchool = school || updateData.school
 
-            const { data: existingLead, error: searchError } = await supabaseAdmin
+            const { data: existingLead } = await supabaseAdmin
                 .from('users')
                 .select('id, name')
                 .eq('role', 'ACADEMIC_LEAD')
@@ -69,7 +69,16 @@ export async function POST(request: Request) {
                 .maybeSingle()
 
             if (existingLead) {
-                return NextResponse.json({ error: `There is already an Academic Lead for ${targetSchool} (${existingLead.name}). Please change their role first.` }, { status: 400 })
+                if (userData?.role === 'ADMIN') {
+                    // ADMIN can override — demote the existing Academic Lead to SHO
+                    await supabaseAdmin
+                        .from('users')
+                        .update({ role: 'SHO' })
+                        .eq('id', existingLead.id)
+                } else {
+                    // SUB_ADMIN cannot override
+                    return NextResponse.json({ error: `There is already an Academic Lead for ${targetSchool} (${existingLead.name}). Please change their role first.` }, { status: 400 })
+                }
             }
         }
 
