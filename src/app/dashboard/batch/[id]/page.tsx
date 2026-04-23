@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X, ArrowRightLeft } from 'lucide-react'
 
 interface Student {
     id: string
@@ -54,6 +54,11 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const [salesPersons, setSalesPersons] = useState<{ id: string; name: string; sales_id: string; school: string }[]>([])
     const [addForm, setAddForm] = useState({ student_name: '', student_email: '', student_phone: '', sales_user_id: '' })
 
+    const [showTransferModal, setShowTransferModal] = useState(false)
+    const [transferLoading, setTransferLoading] = useState(false)
+    const [shos, setShos] = useState<{ id: string; name: string; school: string }[]>([])
+    const [selectedSho, setSelectedSho] = useState('')
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setUserRole(localStorage.getItem('userRole'))
@@ -82,6 +87,47 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             .or('role.eq.SALES,role.eq.SALES_EXECUTIVE,role.eq.SALES_TEAM_LEAD')
             .order('name')
         if (data) setSalesPersons(data)
+    }
+
+    const fetchShos = async (school: string) => {
+        const { data } = await supabase
+            .from('users')
+            .select('id, name, school')
+            .in('role', ['SHO', 'SSHO'])
+            .eq('school', school)
+            .order('name')
+        if (data) setShos(data)
+    }
+
+    const handleTransferSho = async () => {
+        if (!selectedSho) { alert('Please select a SHO'); return }
+        const sho = shos.find(s => s.id === selectedSho)
+        if (!sho) return
+        setTransferLoading(true)
+        try {
+            const userName = typeof window !== 'undefined' ? localStorage.getItem('userName') || 'Admin' : 'Admin'
+            const { error } = await supabase
+                .from('batches')
+                .update({ sho_name: sho.name })
+                .eq('id', id)
+            if (error) throw error
+
+            await supabase.from('batch_history').insert([{
+                batch_id: id,
+                edited_by: userName,
+                changes: { sho_name: { from: batch?.sho_name, to: sho.name } },
+                edited_at: new Date().toISOString()
+            }])
+
+            setBatch(prev => prev ? { ...prev, sho_name: sho.name } : null)
+            setShowTransferModal(false)
+            setSelectedSho('')
+            alert(`Batch transferred to ${sho.name} successfully!`)
+        } catch (err: any) {
+            alert('Error: ' + err.message)
+        } finally {
+            setTransferLoading(false)
+        }
     }
 
     const handleAddStudent = async () => {
@@ -500,13 +546,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{batch.name}</h2>
                     {['ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(userRole || '') && (
-                        <button
-                            onClick={() => router.push(`/dashboard/batch/${id}/edit`)}
-                            style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.375rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem' }}
-                            title="Edit Batch"
-                        >
-                            <Edit size={15} /> Edit Batch
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button
+                                onClick={() => { fetchShos(batch.school); setShowTransferModal(true) }}
+                                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.375rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem' }}
+                                title="Transfer to another SHO"
+                            >
+                                <ArrowRightLeft size={15} /> Transfer SHO
+                            </button>
+                            <button
+                                onClick={() => router.push(`/dashboard/batch/${id}/edit`)}
+                                style={{ background: 'none', border: '1px solid var(--border)', borderRadius: '0.375rem', cursor: 'pointer', color: 'var(--text-secondary)', padding: '0.375rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.375rem', fontSize: '0.875rem' }}
+                                title="Edit Batch"
+                            >
+                                <Edit size={15} /> Edit Batch
+                            </button>
+                        </div>
                     )}
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
@@ -573,6 +628,43 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                     </div>
                 </div>
             </div>
+
+            {/* Transfer SHO Modal */}
+            {showTransferModal && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '420px', position: 'relative' }}>
+                        <button onClick={() => { setShowTransferModal(false); setSelectedSho('') }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <X size={20} />
+                        </button>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <ArrowRightLeft size={20} /> Transfer Batch SHO
+                        </h3>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Current SHO: <strong>{batch.sho_name || 'None'}</strong>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label className="label">Select New SHO ({batch.school})</label>
+                                <select className="input" value={selectedSho} onChange={e => setSelectedSho(e.target.value)}>
+                                    <option value="">Choose SHO / SSHO...</option>
+                                    {shos.filter(s => s.name !== batch.sho_name).map(s => (
+                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                    ))}
+                                </select>
+                                {shos.filter(s => s.name !== batch.sho_name).length === 0 && (
+                                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>No other SHOs available for {batch.school}.</p>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowTransferModal(false); setSelectedSho('') }}>Cancel</button>
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleTransferSho} disabled={transferLoading || !selectedSho}>
+                                    {transferLoading ? 'Transferring...' : 'Confirm Transfer'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Add Student Modal */}
             {showAddModal && (
