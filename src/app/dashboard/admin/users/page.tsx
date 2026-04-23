@@ -23,7 +23,8 @@ export default function AdminUsersPage() {
 
     const fetchUsers = async () => {
         try {
-            const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false }) // Users usually have created_at
+            setLoading(true)
+            const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false })
             if (error) throw error
             if (data) setUsers(data)
         } catch (error) {
@@ -267,8 +268,6 @@ export default function AdminUsersPage() {
                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <button
                                             onClick={async () => {
-                                                if (!confirm(`Are you sure you want to update ${user.email}?\nRole: ${user.role}\nSchool: ${user.school || 'None'}`)) return
-
                                                 try {
                                                     const { data: { session } } = await supabase.auth.getSession()
                                                     const res = await fetch('/api/update-user', {
@@ -287,9 +286,10 @@ export default function AdminUsersPage() {
 
                                                     const data = await res.json()
                                                     if (!res.ok) throw new Error(data.error || 'Failed to update')
-                                                    alert('User updated successfully')
+                                                    await fetchUsers()
                                                 } catch (err: any) {
                                                     alert('Error updating user: ' + err.message)
+                                                    await fetchUsers()
                                                 }
                                             }}
                                             className="btn-primary"
@@ -324,7 +324,7 @@ export default function AdminUsersPage() {
                                                         })
                                                     })
                                                     if (!res.ok) throw new Error('Failed to update')
-                                                    fetchUsers()
+                                                    await fetchUsers()
                                                 } catch (err) { alert('Error updating Cliq ID') }
                                             }}
                                             className="btn-secondary"
