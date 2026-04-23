@@ -2,7 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X, ArrowRightLeft } from 'lucide-react'
+import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X, ArrowRightLeft, MoveRight } from 'lucide-react'
 
 interface Student {
     id: string
@@ -59,6 +59,12 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
     const [shos, setShos] = useState<{ id: string; name: string; school: string }[]>([])
     const [selectedSho, setSelectedSho] = useState('')
 
+    const [showStudentTransferModal, setShowStudentTransferModal] = useState(false)
+    const [studentTransferLoading, setStudentTransferLoading] = useState(false)
+    const [transferringStudent, setTransferringStudent] = useState<Student | null>(null)
+    const [allBatches, setAllBatches] = useState<{ id: string; name: string; course: string; school: string }[]>([])
+    const [selectedTransferBatch, setSelectedTransferBatch] = useState('')
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             setUserRole(localStorage.getItem('userRole'))
@@ -78,7 +84,56 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         fetchBatchDetails(dbId)
         fetchStudents(dbId)
         fetchSalesPersons()
+        fetchAllBatches()
     }, [id])
+
+    const fetchAllBatches = async () => {
+        const { data } = await supabase
+            .from('batches')
+            .select('id, name, course, school')
+            .order('name')
+        if (data) setAllBatches(data)
+    }
+
+    const handleStudentTransfer = async () => {
+        if (!selectedTransferBatch || !transferringStudent) { alert('Please select a batch'); return }
+        setStudentTransferLoading(true)
+        try {
+            // Update sales_enrollments
+            const { error: seError } = await supabase
+                .from('sales_enrollments')
+                .update({ batch_id: selectedTransferBatch })
+                .eq('id', transferringStudent.id)
+            if (seError) throw seError
+
+            // Update student_batches (best-effort)
+            await supabase
+                .from('student_batches')
+                .update({ batch_id: selectedTransferBatch })
+                .eq('student_email', transferringStudent.student_email)
+                .eq('batch_id', id)
+
+            // If onboarded, update official students table
+            if (transferringStudent.onboarding_completed) {
+                await supabase
+                    .from('students')
+                    .update({ batch_id: selectedTransferBatch })
+                    .eq('email', transferringStudent.student_email)
+                    .eq('batch_id', id)
+            }
+
+            setStudents(prev => prev.filter(s => s.id !== transferringStudent.id))
+            setShowStudentTransferModal(false)
+            setTransferringStudent(null)
+            setSelectedTransferBatch('')
+            const dest = allBatches.find(b => b.id === selectedTransferBatch)
+            alert(`${transferringStudent.student_name} transferred to ${dest?.name || selectedTransferBatch} successfully!`)
+        } catch (err: any) {
+            alert('Error: ' + err.message)
+        } finally {
+            setStudentTransferLoading(false)
+        }
+    }
 
     const fetchSalesPersons = async () => {
         const { data } = await supabase
@@ -666,6 +721,45 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                 </div>
             )}
 
+            {/* Student Transfer Modal */}
+            {showStudentTransferModal && transferringStudent && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div className="card" style={{ width: '100%', maxWidth: '440px', position: 'relative' }}>
+                        <button onClick={() => { setShowStudentTransferModal(false); setTransferringStudent(null); setSelectedTransferBatch('') }} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}>
+                            <X size={20} />
+                        </button>
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <MoveRight size={20} /> Transfer Student
+                        </h3>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Moving <strong>{transferringStudent.student_name}</strong> from <strong>{batch.name}</strong>
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label className="label">Select Destination Batch</label>
+                                <select className="input" value={selectedTransferBatch} onChange={e => setSelectedTransferBatch(e.target.value)}>
+                                    <option value="">Choose batch...</option>
+                                    {allBatches.filter(b => b.id !== id).map(b => (
+                                        <option key={b.id} value={b.id}>{b.name} — {b.course} ({b.school})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            {transferringStudent.onboarding_completed && (
+                                <p style={{ fontSize: '0.8rem', color: '#b45309', background: '#fef9c3', border: '1px solid #fde047', borderRadius: '0.375rem', padding: '0.5rem 0.75rem' }}>
+                                    This student is onboarded — their official record will also be moved to the new batch.
+                                </p>
+                            )}
+                            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={() => { setShowStudentTransferModal(false); setTransferringStudent(null); setSelectedTransferBatch('') }}>Cancel</button>
+                                <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleStudentTransfer} disabled={studentTransferLoading || !selectedTransferBatch}>
+                                    {studentTransferLoading ? 'Transferring...' : 'Confirm Transfer'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Add Student Modal */}
             {showAddModal && (
                 <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
@@ -886,19 +980,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                             )}
 
                                             {canDelete && (
-                                                <button
-                                                    onClick={() => handleDeleteStudent(student.id, student.student_email)}
-                                                    style={{
-                                                        fontSize: '0.75rem', fontWeight: '600',
-                                                        color: 'var(--error)', background: 'transparent',
-                                                        border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
-                                                        cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
-                                                        marginLeft: '0.5rem'
-                                                    }}
-                                                    title="Remove Student"
-                                                >
-                                                    <Trash2 size={12} />
-                                                </button>
+                                                <div style={{ display: 'flex', gap: '0.375rem', marginLeft: '0.5rem' }}>
+                                                    <button
+                                                        onClick={() => { setTransferringStudent(student); setShowStudentTransferModal(true) }}
+                                                        style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--primary)', background: 'transparent', border: '1px solid var(--primary)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                        title="Transfer to another batch"
+                                                    >
+                                                        <MoveRight size={12} /> Transfer
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                        style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--error)', background: 'transparent', border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                        title="Remove Student"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
                                     ) : (
@@ -936,19 +1033,22 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                     )}
 
                                                     {canDelete && (
-                                                        <button
-                                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
-                                                            style={{
-                                                                fontSize: '0.75rem', fontWeight: '600',
-                                                                color: 'var(--error)', background: 'transparent',
-                                                                border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
-                                                                marginLeft: '0.5rem'
-                                                            }}
-                                                            title="Remove Student"
-                                                        >
-                                                            <Trash2 size={12} />
-                                                        </button>
+                                                        <div style={{ display: 'flex', gap: '0.375rem', marginLeft: '0.5rem' }}>
+                                                            <button
+                                                                onClick={() => { setTransferringStudent(student); setShowStudentTransferModal(true) }}
+                                                                style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--primary)', background: 'transparent', border: '1px solid var(--primary)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                                title="Transfer to another batch"
+                                                            >
+                                                                <MoveRight size={12} /> Transfer
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                                style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--error)', background: 'transparent', border: '1px solid var(--error-border)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                                title="Remove Student"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </>
                                             ) : (
@@ -1006,18 +1106,21 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                     </div>
 
                                                     {canDelete && (
-                                                        <button
-                                                            onClick={() => handleDeleteStudent(student.id, student.student_email)}
-                                                            style={{
-                                                                fontSize: '0.75rem', fontWeight: '600',
-                                                                color: 'white', background: 'var(--error, #ef4444)',
-                                                                border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem',
-                                                                cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem',
-                                                                marginTop: '0.5rem'
-                                                            }}
-                                                        >
-                                                            <Trash2 size={12} /> Remove
-                                                        </button>
+                                                        <div style={{ display: 'flex', gap: '0.375rem', marginTop: '0.5rem' }}>
+                                                            <button
+                                                                onClick={() => { setTransferringStudent(student); setShowStudentTransferModal(true) }}
+                                                                style={{ fontSize: '0.75rem', fontWeight: '600', color: 'var(--primary)', background: 'transparent', border: '1px solid var(--primary)', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                                title="Transfer to another batch"
+                                                            >
+                                                                <MoveRight size={12} /> Transfer
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteStudent(student.id, student.student_email)}
+                                                                style={{ fontSize: '0.75rem', fontWeight: '600', color: 'white', background: 'var(--error, #ef4444)', border: 'none', padding: '0.375rem 0.75rem', borderRadius: '0.375rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                                                            >
+                                                                <Trash2 size={12} /> Remove
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </>
                                             )}
