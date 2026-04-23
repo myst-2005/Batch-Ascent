@@ -82,6 +82,20 @@ export async function POST(request: Request) {
             }
         }
 
+        // Update auth.users metadata FIRST so any BEFORE UPDATE trigger
+        // on public.users reads the new values instead of the old ones
+        const authMeta: any = {}
+        if (role !== undefined) authMeta.role = role
+        if (school !== undefined) authMeta.school = school || null
+        if (Object.keys(authMeta).length > 0) {
+            const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, {
+                user_metadata: authMeta,
+                app_metadata: authMeta
+            })
+            if (authError) console.error('Auth metadata update error (non-fatal):', authError.message)
+        }
+
+        // Now update public.users — any trigger will see the fresh auth metadata
         const { data: updated, error } = await supabaseAdmin
             .from('users')
             .update(updateData)
@@ -92,17 +106,6 @@ export async function POST(request: Request) {
 
         if (!updated || updated.length === 0) {
             throw new Error(`Update matched 0 rows for user id: ${id}. Check if the ID exists in the users table.`)
-        }
-
-        // Also update auth user metadata so any trigger syncing auth→public.users
-        // doesn't revert the role change on next session refresh
-        const authMeta: any = {}
-        if (role !== undefined) authMeta.role = role
-        if (school !== undefined) authMeta.school = school || null
-        if (Object.keys(authMeta).length > 0) {
-            await supabaseAdmin.auth.admin.updateUserById(id, {
-                user_metadata: authMeta
-            })
         }
 
         return NextResponse.json({ success: true, updated: updated[0] })
