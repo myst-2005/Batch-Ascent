@@ -94,6 +94,17 @@ export async function POST(request: Request) {
             throw new Error(`Update matched 0 rows for user id: ${id}. Check if the ID exists in the users table.`)
         }
 
+        // Also update auth user metadata so any trigger syncing auth→public.users
+        // doesn't revert the role change on next session refresh
+        const authMeta: any = {}
+        if (role !== undefined) authMeta.role = role
+        if (school !== undefined) authMeta.school = school || null
+        if (Object.keys(authMeta).length > 0) {
+            await supabaseAdmin.auth.admin.updateUserById(id, {
+                user_metadata: authMeta
+            })
+        }
+
         return NextResponse.json({ success: true, updated: updated[0] })
 
     } catch (error: any) {
