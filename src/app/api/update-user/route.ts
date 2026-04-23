@@ -51,10 +51,10 @@ export async function POST(request: Request) {
         }
 
         const updateData: any = {}
-        if (cliq_id !== undefined) updateData.cliq_id = cliq_id
+        if (cliq_id !== undefined) updateData.cliq_id = cliq_id || null
         if (role !== undefined) updateData.role = role
-        if (school !== undefined) updateData.school = school
-        if (sales_id !== undefined) updateData.sales_id = sales_id
+        if (school !== undefined) updateData.school = school || null
+        if (sales_id !== undefined) updateData.sales_id = sales_id || null
 
         // Validation: Check if Academic Lead already exists for this school
         if (role === 'ACADEMIC_LEAD' && (school || updateData.school)) {

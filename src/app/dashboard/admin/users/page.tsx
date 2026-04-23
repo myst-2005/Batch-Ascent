@@ -283,8 +283,8 @@ export default function AdminUsersPage() {
                                                         body: JSON.stringify({
                                                             id: user.id,
                                                             role: user.role,
-                                                            school: user.school || '',
-                                                            sales_id: user.sales_id || ''
+                                                            school: user.school || null,
+                                                            sales_id: user.sales_id || null
                                                         })
                                                     })
                                                     const data = await res.json()
