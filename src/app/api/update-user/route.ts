@@ -56,32 +56,6 @@ export async function POST(request: Request) {
         if (school !== undefined) updateData.school = school || null
         if (sales_id !== undefined) updateData.sales_id = sales_id || null
 
-        // Validation: Check if Academic Lead already exists for this school
-        if (role === 'ACADEMIC_LEAD' && (school || updateData.school)) {
-            const targetSchool = school || updateData.school
-
-            const { data: existingLead } = await supabaseAdmin
-                .from('users')
-                .select('id, name')
-                .eq('role', 'ACADEMIC_LEAD')
-                .eq('school', targetSchool)
-                .neq('id', id)
-                .maybeSingle()
-
-            if (existingLead) {
-                if (userData?.role === 'ADMIN') {
-                    // ADMIN can override — demote the existing Academic Lead to SHO
-                    await supabaseAdmin
-                        .from('users')
-                        .update({ role: 'SHO' })
-                        .eq('id', existingLead.id)
-                } else {
-                    // SUB_ADMIN cannot override
-                    return NextResponse.json({ error: `There is already an Academic Lead for ${targetSchool} (${existingLead.name}). Please change their role first.` }, { status: 400 })
-                }
-            }
-        }
-
         // Update auth.users metadata FIRST so any BEFORE UPDATE trigger
         // on public.users reads the new values instead of the old ones
         const authMeta: any = {}
