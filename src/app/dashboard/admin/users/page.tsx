@@ -7,6 +7,8 @@ import { SCHOOLS, ROLES } from '@/lib/constants'
 export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
+    const [savingId, setSavingId] = useState<string | null>(null)
+    const [savedId, setSavedId] = useState<string | null>(null)
     const [newUser, setNewUser] = useState({
         name: '',
         email: '',
@@ -14,8 +16,6 @@ export default function AdminUsersPage() {
         school: ''
     })
     const [schoolsList, setSchoolsList] = useState<any[]>([])
-
-    // Filter states
 
     // Filter states
     const [filterSchool, setFilterSchool] = useState('ALL')
@@ -267,42 +267,55 @@ export default function AdminUsersPage() {
                                     <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{user.cliq_id || '-'}</td>
                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <button
+                                            disabled={savingId === user.id}
                                             onClick={async () => {
+                                                setSavingId(user.id)
+                                                setSavedId(null)
                                                 try {
                                                     const { data: { session } } = await supabase.auth.getSession()
+                                                    if (!session) throw new Error('Session expired — please refresh the page')
                                                     const res = await fetch('/api/update-user', {
                                                         method: 'POST',
                                                         headers: {
                                                             'Content-Type': 'application/json',
-                                                            'Authorization': `Bearer ${session?.access_token}`
+                                                            'Authorization': `Bearer ${session.access_token}`
                                                         },
                                                         body: JSON.stringify({
                                                             id: user.id,
                                                             role: user.role,
-                                                            school: user.school,
-                                                            sales_id: user.sales_id
+                                                            school: user.school || '',
+                                                            sales_id: user.sales_id || ''
                                                         })
                                                     })
-
                                                     const data = await res.json()
                                                     if (!res.ok) throw new Error(data.error || 'Failed to update')
+                                                    setSavedId(user.id)
+                                                    setTimeout(() => setSavedId(null), 2000)
                                                     await fetchUsers()
                                                 } catch (err: any) {
-                                                    alert('Error updating user: ' + err.message)
-                                                    await fetchUsers()
+                                                    alert('Error: ' + err.message)
+                                                } finally {
+                                                    setSavingId(null)
                                                 }
                                             }}
-                                            className="btn-primary"
                                             style={{
-                                                padding: '0.25rem 0.5rem',
+                                                padding: '0.25rem 0.75rem',
                                                 fontSize: '0.75rem',
                                                 marginRight: '0.5rem',
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                gap: '4px'
+                                                gap: '4px',
+                                                background: savedId === user.id ? '#16a34a' : 'var(--primary)',
+                                                color: 'white',
+                                                border: 'none',
+                                                borderRadius: '0.375rem',
+                                                cursor: savingId === user.id ? 'not-allowed' : 'pointer',
+                                                opacity: savingId === user.id ? 0.7 : 1,
+                                                transition: 'background 0.3s',
+                                                fontWeight: '600'
                                             }}
                                         >
-                                            Save
+                                            {savingId === user.id ? 'Saving...' : savedId === user.id ? '✓ Saved' : 'Save'}
                                         </button>
                                         <button
                                             onClick={async () => {
