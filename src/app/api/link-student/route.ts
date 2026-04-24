@@ -57,9 +57,11 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single()
 
-        if (roleError || !['ADMIN', 'SHO', 'SSHO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userData?.role || '')) {
+        if (roleError || !['ADMIN', 'CEO', 'SHO', 'SSHO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userData?.role || '')) {
             return NextResponse.json({ error: 'Forbidden: Insufficient permissions' }, { status: 403 })
         }
+
+        const isAdmin = ['ADMIN', 'CEO'].includes(userData?.role || '')
 
         // 4. Verify Sales User Exists
         const { data: salesPerson, error: salesPersonError } = await supabaseAdmin
@@ -84,15 +86,13 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Batch not found' }, { status: 404 })
         }
 
-        // --- BATCH CAPACITY CHECK ---
+        // --- BATCH CAPACITY CHECK (skipped for ADMIN/CEO) ---
         const { count: enrolledCount } = await supabaseAdmin
             .from('sales_enrollments')
             .select('*', { count: 'exact', head: true })
             .eq('batch_id', batch_id)
 
-        // Assuming batch.strength is mandatory. If null, we might skip check or assume unlimited.
-        // Let's assume strength is a number.
-        if (enrolledCount !== null && batch.strength && enrolledCount >= batch.strength) {
+        if (!isAdmin && enrolledCount !== null && batch.strength && enrolledCount >= batch.strength) {
             console.log(`Batch ${batch.name} (${batch_id}) is FULL. Triggering Overflow Webhook...`)
 
             // Fetch Sales Person details (need email/phone for webhook if possible, though we only queried ID initially)
