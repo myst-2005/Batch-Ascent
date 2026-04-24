@@ -85,8 +85,8 @@ export async function POST(request: Request) {
         }
 
         // --- BATCH CAPACITY CHECK ---
-        const { count: enrolledCount, error: countError } = await supabaseAdmin
-            .from('student_batches')
+        const { count: enrolledCount } = await supabaseAdmin
+            .from('sales_enrollments')
             .select('*', { count: 'exact', head: true })
             .eq('batch_id', batch_id)
 
@@ -141,7 +141,6 @@ export async function POST(request: Request) {
         }
 
         const now = new Date().toISOString()
-        const phoneInt = parseInt(student_phone.replace(/\D/g, ''))
 
         // --- Student ID Generation Logic ---
 
@@ -213,83 +212,26 @@ export async function POST(request: Request) {
 
         console.log(`Generated Student ID: ${newStudentId} for ${batch.school} - ${batch.course}`)
 
-        // 5. Database Insertions
+        // 5. Insert into sales_enrollments (primary table used by batch detail page)
+        const { error: enrollError } = await supabaseAdmin
+            .from('sales_enrollments')
+            .insert({
+                student_name,
+                student_email,
+                student_phone,
+                batch_id,
+                sales_id: salesPerson.sales_id,
+                status: 'Pending',
+                onboarding_completed: false,
+                created_at: now
+            })
 
-        // A. Insert/Get Student
-        const { data: studentData, error: studentError } = await supabaseAdmin
-            .from('students')
-            .insert([
-                {
-                    student_id: newStudentId, // The generated ID
-                    full_name: student_name,
-                    email: student_email,
-                    phone: isNaN(phoneInt) ? null : phoneInt,
-                    batch_id: batch_id,
-                    school_code: schoolCode,
-                    course_code: courseCode
-                }
-            ])
-            .select()
-            .single()
-
-        if (studentError) {
-            if (!studentError.message.includes('duplicate') && !studentError.message.includes('unique')) {
-                throw new Error('Error creating student: ' + studentError.message)
-            }
-            console.log('Student presumably already exists, proceeding...')
-        }
-
-        // B. Enroll in Batch
-        const { error: batchError } = await supabaseAdmin
-            .from('student_batches')
-            .insert([
-                {
-                    student_name: student_name,
-                    student_email: student_email,
-                    student_phone: student_phone,
-                    batch_id: batch_id,
-                    sales_id: sales_user_id, // UUID foreign key to users.id
-                    linked_at: now,
-                    onboarding_completed: true,
-                    verified_at: now,
-                    called_at: now,
-                    status: 'Verified'
-                }
-            ])
-            .select() // Add select to return data or error better
-
-        if (batchError) {
-            throw new Error('Error linking student to batch: ' + batchError.message)
-        }
-
-        // C. Update Sales Stats (This is the critical part user mentioned)
-        if (salesPerson.sales_id) {
-            console.log(`Saving to sales_enrollments for SalesID: ${salesPerson.sales_id}`)
-            const { error: salesEnrollError } = await supabaseAdmin
-                .from('sales_enrollments')
-                .insert({
-                    student_email: student_email,
-                    student_name: student_name,
-                    student_phone: student_phone,
-                    batch_id: batch_id,
-                    sales_id: salesPerson.sales_id,
-                    created_at: now
-                })
-
-            if (salesEnrollError) {
-                console.error('CRITICAL: Sales enrollment stat error:', salesEnrollError)
-                // Optionally throw to fail the REQUEST if this stat is mandatory
-                // throw new Error('Failed to save sales enrollment: ' + salesEnrollError.message)
-            } else {
-                console.log('Successfully saved to sales_enrollments')
-            }
-        } else {
-            console.warn('WARNING: No sales_id found for user, skipping sales_enrollments insert.')
+        if (enrollError) {
+            throw new Error('Error enrolling student: ' + enrollError.message)
         }
 
         return NextResponse.json({
             success: true,
-            student: studentData || { status: 'Existing student linked', student_id: newStudentId },
             generated_id: newStudentId
         })
 
