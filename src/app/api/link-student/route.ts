@@ -223,7 +223,7 @@ export async function POST(request: Request) {
                 sales_id: salesPerson.sales_id,
                 status: 'Pending',
                 onboarding_completed: false,
-                created_at: now
+                linked_at: now
             })
 
         if (enrollError) {
