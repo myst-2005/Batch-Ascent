@@ -135,7 +135,7 @@ export async function POST(request: Request) {
             // We do NOT insert into DB. "Delete that data" means don't save it locally.
             return NextResponse.json({
                 success: false,
-                message: 'Batch is full. Student added to waitlist/overflow via webhook.',
+                error: `Batch is full (${enrolledCount}/${batch.strength} students). Student has been added to the waitlist.`,
                 code: 'BATCH_FULL'
             }, { status: 409 })
         }
@@ -188,7 +188,7 @@ export async function POST(request: Request) {
             .rpc('increment_school_counter_sd', { p_school_code: schoolCode })
 
         if (rpcError) {
-            throw new Error('Failed to generate student ID sequence: ' + rpcError.message)
+            console.error('Student ID generation failed (non-fatal):', rpcError.message)
         }
 
         console.log('DEBUG: RPC Response:', rpcData)
