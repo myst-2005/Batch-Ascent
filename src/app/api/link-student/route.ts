@@ -248,7 +248,7 @@ export async function POST(request: Request) {
                     student_email: student_email,
                     student_phone: student_phone,
                     batch_id: batch_id,
-                    sales_id: salesPerson.sales_id, // STRICTLY using Sales ID string from users table
+                    sales_id: sales_user_id, // UUID foreign key to users.id
                     linked_at: now,
                     onboarding_completed: true,
                     verified_at: now,
