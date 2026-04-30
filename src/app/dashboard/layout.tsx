@@ -39,15 +39,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const navItems = [
         { label: 'Overview', href: '/dashboard', icon: LayoutDashboard, roles: ['SHO', 'ACADEMIC_LEAD', 'ADMIN', 'PROJECT_LEAD', 'SSHO', 'SALES_HEAD', 'CEO'] },
         { label: 'Status', href: '/dashboard/status', icon: TrendingUp, roles: ['ADMIN', 'CEO', 'PROJECT_LEAD'] },
-        { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD'] },
-        { label: 'Sales Intimation', href: '/dashboard/sales/intimation', icon: PlusCircle, roles: ['SALES', 'SALES_HEAD'] },
-        { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD'] },
+        { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
+        { label: 'Sales Intimation', href: '/dashboard/sales/intimation', icon: PlusCircle, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
+        { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD', 'ADMIN'] },
         { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
-        { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO', 'ADMIN', 'SALES_HEAD'] },
-        { label: 'Manage Schools & Courses', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN'] },
-        { label: 'Manage Users', href: '/dashboard/admin/users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN'] },
-        { label: 'Approve Users', href: '/dashboard/admin/approve-users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN'] },
+        { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO', 'ADMIN', 'SALES_HEAD', 'CEO'] },
+        { label: 'Manage Schools & Courses', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN', 'CEO'] },
+        { label: 'Manage Users', href: '/dashboard/admin/users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN', 'CEO'] },
+        { label: 'Approve Users', href: '/dashboard/admin/approve-users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN', 'CEO'] },
     ]
 
     return (

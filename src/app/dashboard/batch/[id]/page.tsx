@@ -1021,7 +1021,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         To Call
                                                     </div>
 
-                                                    {['SHO', 'SSHO'].includes(userRole || '') && (
+                                                    {['SHO', 'SSHO', 'ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
                                                         <button
                                                             onClick={() => handleCallStudent(student.id, student.student_phone)}
                                                             className="hover:scale-105 active:scale-95"
@@ -1085,7 +1085,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                                                         </div>
 
                                                         {/* Action: Mark Done or Undo */}
-                                                        {['SHO', 'SSHO'].includes(userRole || '') && (
+                                                        {['SHO', 'SSHO', 'ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
                                                             <button
                                                                 onClick={() => handleCallStudent(student.id, '', true)}
                                                                 style={{

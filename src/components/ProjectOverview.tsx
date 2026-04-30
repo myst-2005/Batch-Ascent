@@ -212,7 +212,7 @@ export default function ProjectOverview() {
     if (loading) return <div className="animate-pulse">Loading analytics...</div>
 
     const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-    const showActionableStats = ['SHO', 'SSHO', 'SALES_HEAD'].includes(userRole || '')
+    const showActionableStats = ['SHO', 'SSHO', 'SALES_HEAD', 'ADMIN', 'CEO', 'ACADEMIC_LEAD'].includes(userRole || '')
 
     return (
         <div className="animate-fade-in">
@@ -239,8 +239,8 @@ export default function ProjectOverview() {
                 /* SHO / SSHO / SALES_HEAD View - LIST ONLY */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
 
-                    {/* SALES HEAD: See Pending Verifications */}
-                    {userRole === 'SALES_HEAD' && (
+                    {/* SALES HEAD / ADMIN / CEO: See Pending Verifications */}
+                    {['SALES_HEAD', 'ADMIN', 'CEO'].includes(userRole || '') && (
                         <>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
@@ -313,8 +313,8 @@ export default function ProjectOverview() {
                         </>
                     )}
 
-                    {/* SHO / SSHO: See Pending Calls */}
-                    {['SHO', 'SSHO'].includes(userRole || '') && (
+                    {/* SHO / SSHO / ADMIN / CEO: See Pending Calls */}
+                    {['SHO', 'SSHO', 'ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
                         <>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
