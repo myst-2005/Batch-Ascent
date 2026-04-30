@@ -142,6 +142,35 @@ export async function POST(request: Request) {
 
         const now = new Date().toISOString()
 
+        // --- Duplicate Email / Phone Check ---
+        const { data: existingByEmail } = await supabaseAdmin
+            .from('sales_enrollments')
+            .select('id, student_name')
+            .eq('student_email', student_email)
+            .maybeSingle()
+
+        if (existingByEmail) {
+            return NextResponse.json({
+                error: `A student with email "${student_email}" is already enrolled. Duplicate emails are not allowed.`
+            }, { status: 400 })
+        }
+
+        // Normalize to last 10 digits to handle +91 prefix variations
+        const last10 = student_phone.replace(/\D/g, '').slice(-10)
+        const { data: allPhones } = await supabaseAdmin
+            .from('sales_enrollments')
+            .select('student_name, student_email, student_phone')
+
+        const dupPhone = (allPhones || []).find(r =>
+            r.student_phone && r.student_phone.replace(/\D/g, '').slice(-10) === last10
+        )
+
+        if (dupPhone) {
+            return NextResponse.json({
+                error: `A student with this phone number is already enrolled (${dupPhone.student_name} — ${dupPhone.student_email}). Duplicate phone numbers are not allowed.`
+            }, { status: 400 })
+        }
+
         // --- Student ID Generation Logic ---
 
         // Fetch School Code from DB
