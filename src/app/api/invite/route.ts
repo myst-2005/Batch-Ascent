@@ -54,7 +54,7 @@ export async function POST(request: Request) {
         // Check if user is admin or sub_admin
         const { data: userData, error: roleError } = await supabaseAdmin
             .from('users')
-            .select('role')
+            .select('role, name, email')
             .eq('id', user.id)
             .single()
 
@@ -139,6 +139,20 @@ export async function POST(request: Request) {
         if (dbError) {
             console.error('Error syncing to public users:', dbError)
         }
+
+        // Log the invite action
+        const inviteIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'Unknown'
+        const inviteUserAgent = request.headers.get('user-agent') || 'Unknown'
+        await supabaseAdmin.from('activity_logs').insert({
+            user_id: user.id,
+            user_name: userData?.name || user.email,
+            user_email: userData?.email || user.email,
+            user_role: userData?.role,
+            action: 'USER_INVITE',
+            details: { invited_email: email, invited_role: role, school: school || null, invited_name: name },
+            ip_address: inviteIp,
+            user_agent: inviteUserAgent
+        })
 
         return NextResponse.json({ success: true, user: authData.user })
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp, History } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp, History, Activity } from 'lucide-react'
 import styles from './dashboard.module.css'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -48,6 +48,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Manage Schools & Courses', href: '/dashboard/admin/schools', icon: BookOpen, roles: ['ADMIN', 'CEO'] },
         { label: 'Manage Users', href: '/dashboard/admin/users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN', 'CEO'] },
         { label: 'Approve Users', href: '/dashboard/admin/approve-users', icon: Users, roles: ['ADMIN', 'SUB_ADMIN', 'CEO'] },
+        { label: 'Activity Logs', href: '/dashboard/admin/logs', icon: Activity, roles: ['ADMIN', 'CEO'] },
     ]
 
     return (

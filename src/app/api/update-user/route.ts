@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         // Check Permissions
         const { data: userData, error: roleError } = await supabaseAdmin
             .from('users')
-            .select('role')
+            .select('role, name, email')
             .eq('id', user.id)
             .single()
 
@@ -81,6 +81,27 @@ export async function POST(request: Request) {
         if (!updated || updated.length === 0) {
             throw new Error(`Update matched 0 rows for user id: ${id}. Check if the ID exists in the users table.`)
         }
+
+        // Log the action directly
+        const logDetails: any = { target_user_id: id }
+        if (role !== undefined) logDetails.new_role = role
+        if (school !== undefined) logDetails.school = school || null
+        if (sales_id !== undefined) logDetails.sales_id = sales_id
+        if (cliq_id !== undefined) logDetails.cliq_id = cliq_id
+
+        const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'Unknown'
+        const userAgent = request.headers.get('user-agent') || 'Unknown'
+
+        await supabaseAdmin.from('activity_logs').insert({
+            user_id: user.id,
+            user_name: userData?.name || user.email,
+            user_email: userData?.email || user.email,
+            user_role: userData?.role,
+            action: role !== undefined ? 'ROLE_CHANGE' : 'USER_UPDATE',
+            details: logDetails,
+            ip_address: ip,
+            user_agent: userAgent
+        })
 
         return NextResponse.json({ success: true, updated: updated[0] })
 

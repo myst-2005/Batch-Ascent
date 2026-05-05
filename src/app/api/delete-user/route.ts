@@ -50,7 +50,7 @@ export async function POST(request: Request) {
         // Check if user is admin or sub_admin
         const { data: userData, error: roleError } = await supabaseAdmin
             .from('users')
-            .select('role')
+            .select('role, name, email')
             .eq('id', user.id)
             .single()
 
@@ -60,6 +60,13 @@ export async function POST(request: Request) {
             console.log("DEBUG: User Role Data:", userData);
             return NextResponse.json({ error: 'Forbidden: Admins only' }, { status: 403 })
         }
+
+        // Fetch target user info before deleting
+        const { data: targetUser } = await supabaseAdmin
+            .from('users')
+            .select('email, name, role')
+            .eq('id', id)
+            .single()
 
         // 1. Delete from Auth Users (This is the critical part)
         const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id)
@@ -77,6 +84,20 @@ export async function POST(request: Request) {
         if (dbError) {
             return NextResponse.json({ error: dbError.message }, { status: 400 })
         }
+
+        // Log the delete action
+        const deleteIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'Unknown'
+        const deleteUserAgent = request.headers.get('user-agent') || 'Unknown'
+        await supabaseAdmin.from('activity_logs').insert({
+            user_id: user.id,
+            user_name: userData?.name || user.email,
+            user_email: userData?.email || user.email,
+            user_role: userData?.role,
+            action: 'USER_DELETE',
+            details: { deleted_user_id: id, deleted_email: targetUser?.email || null, deleted_role: targetUser?.role || null },
+            ip_address: deleteIp,
+            user_agent: deleteUserAgent
+        })
 
         return NextResponse.json({ success: true })
 

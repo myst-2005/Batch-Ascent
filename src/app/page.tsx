@@ -108,6 +108,19 @@ export default function LoginPage() {
           if (userData.sales_id) localStorage.setItem('salesId', userData.sales_id)
           else localStorage.removeItem('salesId')
 
+          fetch('/api/log-activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              user_id: authData.user.id,
+              user_name: userData.name,
+              user_email: userData.email,
+              user_role: userData.role,
+              action: 'LOGIN',
+              details: { school: userData.school || null }
+            })
+          }).catch(() => {}) // fire and forget
+
           router.push('/dashboard')
         }
       }
@@ -147,6 +160,19 @@ export default function LoginPage() {
       localStorage.setItem('userName', pendingUser.name)
       if (pendingUser.school) localStorage.setItem('userSchool', pendingUser.school)
       localStorage.setItem('salesId', salesId)
+
+      fetch('/api/log-activity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: pendingUser.id,
+          user_name: pendingUser.name,
+          user_email: pendingUser.email,
+          user_role: pendingUser.role,
+          action: 'LOGIN',
+          details: { school: pendingUser.school || null, first_login: true }
+        })
+      }).catch(() => {})
 
       router.push('/dashboard')
 

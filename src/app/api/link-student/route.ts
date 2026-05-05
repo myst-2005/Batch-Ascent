@@ -259,6 +259,18 @@ export async function POST(request: Request) {
             throw new Error('Error enrolling student: ' + enrollError.message)
         }
 
+        // Log the student added action
+        await supabaseAdmin.from('activity_logs').insert({
+            user_id: user.id,
+            user_name: '',
+            user_email: user.email,
+            user_role: userData.role,
+            action: 'STUDENT_ADDED',
+            details: { student_name, student_email, batch_id, student_phone },
+            ip_address: request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'Unknown',
+            user_agent: request.headers.get('user-agent') || 'Unknown'
+        })
+
         return NextResponse.json({
             success: true,
             generated_id: newStudentId
