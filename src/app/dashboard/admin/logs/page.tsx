@@ -51,8 +51,29 @@ function formatDetails(details: Record<string, any>) {
     if (!details || typeof details !== 'object') return ''
     return Object.entries(details)
         .filter(([, v]) => v !== null && v !== undefined && v !== '')
-        .map(([k, v]) => `${k}=${typeof v === 'object' ? JSON.stringify(v) : v}`)
-        .join(', ')
+        .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+        .join(' · ')
+}
+
+function parseUserAgent(ua: string) {
+    if (!ua || ua === 'Unknown') return '—'
+    let browser = 'Browser'
+    let os = 'Unknown OS'
+
+    if (ua.includes('Chrome') && !ua.includes('Edg')) browser = 'Chrome'
+    else if (ua.includes('Firefox')) browser = 'Firefox'
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari'
+    else if (ua.includes('Edg')) browser = 'Edge'
+
+    if (ua.includes('Android')) os = 'Android'
+    else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
+    else if (ua.includes('Windows NT 10')) os = 'Windows 10'
+    else if (ua.includes('Windows NT 6')) os = 'Windows 7/8'
+    else if (ua.includes('Mac OS X')) os = 'Mac'
+    else if (ua.includes('Linux')) os = 'Linux'
+
+    const mobile = ua.includes('Mobile') ? ' (Mobile)' : ''
+    return `${browser} / ${os}${mobile}`
 }
 
 function ActionBadge({ action }: { action: string }) {
@@ -228,14 +249,14 @@ export default function ActivityLogsPage() {
                                         <td style={{ padding: '0.75rem 1rem' }}>
                                             <ActionBadge action={log.action} />
                                         </td>
-                                        <td style={{ padding: '0.75rem 1rem', maxWidth: '300px', wordBreak: 'break-word', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                                        <td style={{ padding: '0.75rem 1rem', maxWidth: '260px', fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={formatDetails(log.details)}>
                                             {formatDetails(log.details)}
                                         </td>
                                         <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                                             {log.ip_address || '—'}
                                         </td>
-                                        <td style={{ padding: '0.75rem 1rem', maxWidth: '200px', wordBreak: 'break-word', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                            {log.user_agent || '—'}
+                                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', fontSize: '0.8rem', color: 'var(--text-secondary)' }} title={log.user_agent}>
+                                            {parseUserAgent(log.user_agent)}
                                         </td>
                                     </tr>
                                 ))}
