@@ -15,9 +15,12 @@ CREATE INDEX IF NOT EXISTS activity_logs_created_at_idx ON public.activity_logs(
 CREATE INDEX IF NOT EXISTS activity_logs_user_id_idx ON public.activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS activity_logs_action_idx ON public.activity_logs(action);
 
--- Allow service role full access (used by API routes)
+-- Enable RLS
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Service role full access" ON public.activity_logs
-  USING (true)
-  WITH CHECK (true);
+-- Allow logged-in users to READ logs (admin page uses anon client with session)
+CREATE POLICY "Authenticated users can read logs" ON public.activity_logs
+  FOR SELECT TO authenticated
+  USING (true);
+
+-- Service role bypasses RLS for INSERT (used by API routes with service key)

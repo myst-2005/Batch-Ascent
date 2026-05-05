@@ -81,11 +81,13 @@ const ACTION_OPTIONS = [
 export default function ActivityLogsPage() {
     const [logs, setLogs] = useState<ActivityLog[]>([])
     const [loading, setLoading] = useState(true)
+    const [fetchError, setFetchError] = useState<string | null>(null)
     const [actionFilter, setActionFilter] = useState('ALL')
     const [searchQuery, setSearchQuery] = useState('')
 
     const fetchLogs = async () => {
         setLoading(true)
+        setFetchError(null)
         const { data, error } = await supabase
             .from('activity_logs')
             .select('*')
@@ -95,6 +97,7 @@ export default function ActivityLogsPage() {
             setLogs(data as ActivityLog[])
         } else {
             console.error('Failed to fetch logs:', error)
+            setFetchError(error?.message || 'Failed to fetch logs. Make sure the activity_logs table exists in Supabase.')
         }
         setLoading(false)
     }
@@ -159,6 +162,10 @@ export default function ActivityLogsPage() {
                 {loading ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         Loading activity logs...
+                    </div>
+                ) : fetchError ? (
+                    <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--error)' }}>
+                        ⚠️ {fetchError}
                     </div>
                 ) : filtered.length === 0 ? (
                     <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
