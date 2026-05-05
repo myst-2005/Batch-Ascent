@@ -2,6 +2,7 @@
 import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { logActivity } from '@/lib/logActivity'
 import { Save, ArrowLeft, History, Trash2 } from 'lucide-react'
 
 export default function EditBatchPage({ params }: { params: Promise<{ id: string }> }) {
@@ -142,6 +143,7 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
 
             if (batchError) throw batchError
 
+            logActivity({ action: 'BATCH_DELETED', details: { batch_id: id } })
             alert('Batch deleted successfully')
             router.push('/dashboard')
         } catch (error: any) {
@@ -186,6 +188,7 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
                 changes: changes
             })
 
+            logActivity({ action: 'BATCH_UPDATED', details: { batch_id: id, changes } })
             alert('Batch updated successfully!')
             router.push('/dashboard')
         } catch (error: any) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { logActivity } from '@/lib/logActivity'
 import { Save } from 'lucide-react'
 import { SCHOOLS } from '@/lib/constants'
 
@@ -153,6 +154,7 @@ export default function CreateBatchPage() {
 
             if (error) throw error
 
+            logActivity({ action: 'BATCH_CREATED', details: { batch_id: formData.id, batch_name: formData.name, school: formData.school, course: formData.course } })
             alert('Batch created successfully!')
             router.push('/dashboard')
         } catch (error: any) {

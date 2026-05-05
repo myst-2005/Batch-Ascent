@@ -3,6 +3,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { ArrowLeft, Users, Mail, Phone, Calendar, RefreshCw, CheckCircle, User, Trash2, Edit, UserPlus, X, ArrowRightLeft, MoveRight } from 'lucide-react'
+import { logActivity } from '@/lib/logActivity'
 
 interface Student {
     id: string
@@ -128,11 +129,12 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                     .eq('batch_id', id)
             }
 
+            const dest = allBatches.find(b => b.id === selectedTransferBatch)
+            logActivity({ action: 'STUDENT_TRANSFERRED', details: { student_name: transferringStudent.student_name, student_email: transferringStudent.student_email, from_batch: id, to_batch: selectedTransferBatch, to_batch_name: dest?.name } })
             setStudents(prev => prev.filter(s => s.id !== transferringStudent.id))
             setShowStudentTransferModal(false)
             setTransferringStudent(null)
             setSelectedTransferBatch('')
-            const dest = allBatches.find(b => b.id === selectedTransferBatch)
             alert(`${transferringStudent.student_name} transferred to ${dest?.name || selectedTransferBatch} successfully!`)
         } catch (err: any) {
             alert('Error: ' + err.message)
@@ -180,6 +182,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                 edited_at: new Date().toISOString()
             }])
 
+            logActivity({ action: 'SHO_TRANSFERRED', details: { batch_id: id, from_sho: batch?.sho_name, to_sho: sho.name } })
             setBatch(prev => prev ? { ...prev, sho_name: sho.name } : null)
             setShowTransferModal(false)
             setSelectedSho('')
@@ -368,6 +371,8 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             if (error) throw error
 
             setStudents(prev => prev.map(s => s.id === studentId ? { ...s, verified_at: now, status: 'Verified' } : s))
+            const student = students.find(s => s.id === studentId)
+            logActivity({ action: 'STUDENT_VERIFIED', details: { student_name: student?.student_name, student_email: student?.student_email, batch_id: id } })
         } catch (error: any) {
             console.error('Error verifying student:', error)
             alert('Error verifying student: ' + error.message)
@@ -402,6 +407,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
                 if (updateError) throw updateError
 
+                logActivity({ action: 'STUDENT_ONBOARDED', details: { student_name: student.student_name, student_email: student.student_email, batch_id: id } })
             } else {
                 // Mark as Pending
                 // 1. Remove from students table
@@ -420,6 +426,8 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
                     .eq('id', student.id)
 
                 if (updateError) throw updateError
+
+                logActivity({ action: 'STUDENT_ONBOARD_UNDO', details: { student_name: student.student_name, student_email: student.student_email, batch_id: id } })
             }
 
             // Refresh list
@@ -463,7 +471,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
 
             if (sbError) console.warn('Could not delete from student_batches (might not exist):', sbError)
 
-            // Refresh local state manually just in case
+            logActivity({ action: 'STUDENT_REMOVED', details: { student_email: email, batch_id: id } })
             setStudents(prev => prev.filter(s => s.id !== studentId))
             alert('Student removed successfully')
         } catch (error: any) {
@@ -490,6 +498,7 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
             if (error) throw error
 
             setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updateData } : s))
+            logActivity({ action: undo ? 'STUDENT_CALL_UNDO' : 'STUDENT_CALLED', details: { student_id: studentId, batch_id: id, phone } })
 
             // Open Dialer AFTER saving
             if (!undo) {

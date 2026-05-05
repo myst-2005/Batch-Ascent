@@ -24,7 +24,15 @@ const ACTION_COLORS: Record<string, { bg: string; color: string }> = {
     STUDENT_ADDED: { bg: 'rgba(20,184,166,0.15)', color: '#14b8a6' },
     STUDENT_REMOVED: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
     STUDENT_TRANSFERRED: { bg: 'rgba(99,102,241,0.15)', color: '#6366f1' },
+    STUDENT_VERIFIED: { bg: 'rgba(234,179,8,0.15)', color: '#ca8a04' },
+    STUDENT_CALLED: { bg: 'rgba(59,130,246,0.15)', color: '#2563eb' },
+    STUDENT_CALL_UNDO: { bg: 'rgba(156,163,175,0.15)', color: '#6b7280' },
+    STUDENT_ONBOARDED: { bg: 'rgba(34,197,94,0.15)', color: '#16a34a' },
+    STUDENT_ONBOARD_UNDO: { bg: 'rgba(156,163,175,0.15)', color: '#6b7280' },
+    SHO_TRANSFERRED: { bg: 'rgba(245,158,11,0.15)', color: '#d97706' },
+    BATCH_CREATED: { bg: 'rgba(16,185,129,0.15)', color: '#059669' },
     BATCH_UPDATED: { bg: 'rgba(107,114,128,0.15)', color: '#6b7280' },
+    BATCH_DELETED: { bg: 'rgba(239,68,68,0.15)', color: '#ef4444' },
 }
 
 function formatDate(iso: string) {
@@ -75,7 +83,15 @@ const ACTION_OPTIONS = [
     'STUDENT_ADDED',
     'STUDENT_REMOVED',
     'STUDENT_TRANSFERRED',
+    'STUDENT_VERIFIED',
+    'STUDENT_CALLED',
+    'STUDENT_CALL_UNDO',
+    'STUDENT_ONBOARDED',
+    'STUDENT_ONBOARD_UNDO',
+    'SHO_TRANSFERRED',
+    'BATCH_CREATED',
     'BATCH_UPDATED',
+    'BATCH_DELETED',
 ]
 
 export default function ActivityLogsPage() {
