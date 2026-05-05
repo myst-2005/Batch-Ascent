@@ -108,6 +108,7 @@ export default function ActivityLogsPage() {
             .from('activity_logs')
             .select('*')
             .order('created_at', { ascending: false })
+            .limit(1000)
 
         if (!error && data) {
             setLogs(data as ActivityLog[])
