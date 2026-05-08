@@ -109,17 +109,13 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
                 // Or we could enhance query, but client-side is fine for dashboard list usually.
             }
 
-            // Date filtering for Past/Current batches
-            const twoDaysAgo = new Date()
-            twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-            const dateStr = twoDaysAgo.toISOString()
+            // Date filtering using end_date: current = not ended yet, past = already ended
+            const todayStr = new Date().toISOString().split('T')[0]
 
             if (view === 'past') {
-                // Orientation finished > 2 days ago
-                query = query.lt('start_date', dateStr)
+                query = query.lt('end_date', todayStr)
             } else {
-                // Upcoming or finished within last 2 days
-                query = query.gte('start_date', dateStr)
+                query = query.or(`end_date.gte.${todayStr},end_date.is.null`)
             }
 
             const { data, error } = await query

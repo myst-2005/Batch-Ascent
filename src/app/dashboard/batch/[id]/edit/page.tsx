@@ -288,6 +288,13 @@ export default function EditBatchPage({ params }: { params: Promise<{ id: string
                         <input type="date" name="start_date" className="input" value={formData.start_date} onChange={handleChange} required />
                     </div>
                     <div>
+                        <label className="label">End Date</label>
+                        <input type="date" name="end_date" className="input" value={formData.end_date || ''} onChange={handleChange} />
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
                         <label className="label">Strength</label>
                         <input type="number" name="strength" className="input" value={formData.strength} onChange={handleChange} required />
                     </div>

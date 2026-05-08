@@ -91,17 +91,13 @@ export default function SalesIntimationPage() {
             }
 
             try {
-                // Fetch batches with their total strength and current count from sales_enrollments
-                // Filter: Only show current batches (orientation upcoming or within last 2 days)
-                const twoDaysAgo = new Date()
-                twoDaysAgo.setDate(twoDaysAgo.getDate() - 2)
-                const dateStr = twoDaysAgo.toISOString()
+                const todayStr = new Date().toISOString().split('T')[0]
 
                 const { data, error } = await supabase
                     .from('batches')
-                    .select('id, name, strength, start_date')
+                    .select('id, name, strength, start_date, end_date')
                     .eq('school', formData.school)
-                    .gte('start_date', dateStr)
+                    .or(`end_date.gte.${todayStr},end_date.is.null`)
                     .order('start_date', { ascending: false })
 
                 if (error) throw error

@@ -16,6 +16,7 @@ export default function CreateBatchPage() {
         name: '',
         course: '',
         start_date: '',
+        end_date: '',
         sho_name: '',
         academic_lead: '',
         strength: '',
@@ -245,6 +246,18 @@ export default function CreateBatchPage() {
                             type="date"
                             className="input"
                             required
+                            onChange={handleChange}
+                        />
+                    </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div>
+                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>End Date</label>
+                        <input
+                            name="end_date"
+                            type="date"
+                            className="input"
                             onChange={handleChange}
                         />
                     </div>
