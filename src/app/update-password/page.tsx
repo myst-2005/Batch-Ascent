@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
-import { Lock, Phone } from 'lucide-react'
+import { Lock, Phone, AlertCircle, Mail } from 'lucide-react'
 
 export default function UpdatePasswordPage() {
     const router = useRouter()
@@ -11,13 +11,59 @@ export default function UpdatePasswordPage() {
     const [loading, setLoading] = useState(false)
     const [needsPhone, setNeedsPhone] = useState(false)
     const [userData, setUserData] = useState<any>(null)
+    const [linkExpired, setLinkExpired] = useState(false)
+    const [resendEmail, setResendEmail] = useState('')
+    const [resendLoading, setResendLoading] = useState(false)
+    const [resendSent, setResendSent] = useState(false)
+    const [sessionReady, setSessionReady] = useState(false)
 
     useEffect(() => {
+        // Check for error in URL hash (e.g. otp_expired)
+        if (typeof window !== 'undefined') {
+            const hash = window.location.hash
+            if (hash && hash.includes('error')) {
+                const params = new URLSearchParams(hash.substring(1))
+                const errorCode = params.get('error_code')
+                if (errorCode === 'otp_expired' || params.get('error') === 'access_denied') {
+                    setLinkExpired(true)
+                    return
+                }
+            }
+
+            // If tokens in hash, let Supabase exchange them
+            if (hash && hash.includes('access_token')) {
+                // Supabase will handle this via onAuthStateChange
+            }
+        }
+
+        // Listen for auth state
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+                if (session?.user) {
+                    setSessionReady(true)
+                    const { data: profile } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('id', session.user.id)
+                        .single()
+
+                    if (profile) {
+                        setUserData(profile)
+                        if (profile.role === 'SALES' && !profile.sales_id) {
+                            setNeedsPhone(true)
+                        }
+                    } else if (session.user.user_metadata?.role === 'SALES') {
+                        setNeedsPhone(true)
+                    }
+                }
+            }
+        })
+
+        // Also check existing session
         const init = async () => {
             const { data: { user } } = await supabase.auth.getUser()
-
             if (user) {
-                // Fetch Profile from DB to check status/role/sales_id
+                setSessionReady(true)
                 const { data: profile } = await supabase
                     .from('users')
                     .select('*')
@@ -26,17 +72,15 @@ export default function UpdatePasswordPage() {
 
                 if (profile) {
                     setUserData(profile)
-                    // If SALES and NO sales_id, we need phone to generate ID
                     if (profile.role === 'SALES' && !profile.sales_id) {
                         setNeedsPhone(true)
                     }
-                } else if (user.user_metadata?.role === 'SALES') {
-                    // Fallback for Invite flow if DB record missing (unlikely if trigger works, but safe)
-                    setNeedsPhone(true)
                 }
             }
         }
         init()
+
+        return () => subscription.unsubscribe()
     }, [])
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -44,20 +88,15 @@ export default function UpdatePasswordPage() {
         setLoading(true)
 
         try {
-            // 1. Update Password
             const { error } = await supabase.auth.updateUser({ password })
             if (error) throw error
 
-            // 2. Handle Sales ID Generation if needed
             if (needsPhone && phone) {
                 const { data: { user } } = await supabase.auth.getUser()
-                // Use profile data or metadata
                 const role = userData?.role || user?.user_metadata?.role
                 const school = userData?.school || user?.user_metadata?.school || ''
 
-                // Double check if role is indeed SALES (redundant but safe)
                 if (role === 'SALES') {
-                    // Logic to Generate ID
                     let schoolPrefix = 'SALES'
                     if (school.toLowerCase().includes('tech')) schoolPrefix = 'TS'
                     else if (school.toLowerCase().includes('design')) schoolPrefix = 'DS'
@@ -71,16 +110,8 @@ export default function UpdatePasswordPage() {
                         .eq('school', school)
                         .not('sales_id', 'is', null)
 
-                    const salesNumber = (count || 0) + 1
-                    const salesId = `${schoolPrefix}${String(salesNumber).padStart(3, '0')}`
-
-                    await supabase
-                        .from('users')
-                        .update({
-                            sales_id: salesId,
-                            phone: phone
-                        })
-                        .eq('id', user?.id)
+                    const salesId = `${schoolPrefix}${String((count || 0) + 1).padStart(3, '0')}`
+                    await supabase.from('users').update({ sales_id: salesId, phone }).eq('id', user?.id)
                 }
             }
 
@@ -93,6 +124,93 @@ export default function UpdatePasswordPage() {
         }
     }
 
+    const handleResendLink = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!resendEmail) return
+        setResendLoading(true)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+                redirectTo: `${window.location.origin}/auth/callback`
+            })
+            if (error) throw error
+            setResendSent(true)
+        } catch (error: any) {
+            alert('Error sending reset link: ' + error.message)
+        } finally {
+            setResendLoading(false)
+        }
+    }
+
+    // ── Link Expired UI ──
+    if (linkExpired) {
+        return (
+            <div style={{
+                minHeight: '100vh',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'var(--background)'
+            }}>
+                <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '400px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{
+                            width: '48px', height: '48px',
+                            background: '#fee2e2', borderRadius: '12px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 1rem'
+                        }}>
+                            <AlertCircle size={24} color="#ef4444" />
+                        </div>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Link Expired</h1>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                            This password reset link has expired or is invalid.<br />Enter your email to get a new one.
+                        </p>
+                    </div>
+
+                    {resendSent ? (
+                        <div style={{
+                            textAlign: 'center', padding: '1rem',
+                            background: '#f0fdf4', borderRadius: '0.75rem',
+                            border: '1px solid #bbf7d0', color: '#15803d'
+                        }}>
+                            <Mail size={20} style={{ margin: '0 auto 0.5rem' }} />
+                            <p style={{ fontWeight: 600 }}>New link sent!</p>
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>Check your email inbox.</p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleResendLink} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+                                    Your Email
+                                </label>
+                                <input
+                                    type="email"
+                                    className="input"
+                                    placeholder="you@example.com"
+                                    required
+                                    value={resendEmail}
+                                    onChange={e => setResendEmail(e.target.value)}
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={resendLoading}>
+                                {resendLoading ? 'Sending...' : 'Request New Link'}
+                            </button>
+                        </form>
+                    )}
+
+                    <button
+                        onClick={() => router.push('/')}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', marginTop: '0.75rem' }}
+                    >
+                        Back to Login
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    // ── Set Password UI ──
     return (
         <div style={{
             minHeight: '100vh',
@@ -104,15 +222,10 @@ export default function UpdatePasswordPage() {
             <div className="card animate-fade-in" style={{ width: '100%', maxWidth: '400px' }}>
                 <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
                     <div style={{
-                        width: '48px',
-                        height: '48px',
-                        background: 'var(--primary)',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 1rem',
-                        color: 'white'
+                        width: '48px', height: '48px',
+                        background: 'var(--primary)', borderRadius: '12px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        margin: '0 auto 1rem', color: 'white'
                     }}>
                         <Lock size={24} />
                     </div>
