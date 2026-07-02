@@ -26,6 +26,8 @@ export default function CreateBatchPage() {
     const [academicLeads, setAcademicLeads] = useState<any[]>([])
     const [availableSHOs, setAvailableSHOs] = useState<any[]>([])
     const [schoolsList, setSchoolsList] = useState<any[]>([])
+    const [idError, setIdError] = useState<string | null>(null)
+    const [idChecking, setIdChecking] = useState(false)
 
     // Fetch Schools on component mount
     useEffect(() => {
@@ -144,6 +146,12 @@ export default function CreateBatchPage() {
         setLoading(true)
 
         try {
+            if (idError) {
+                alert(idError)
+                setLoading(false)
+                return
+            }
+
             const { error } = await supabase
                 .from('batches')
                 .insert([
@@ -166,16 +174,24 @@ export default function CreateBatchPage() {
         }
     }
 
+    const checkIdExists = async (id: string) => {
+        if (!id) { setIdError(null); return }
+        setIdChecking(true)
+        const { data } = await supabase.from('batches').select('id').eq('id', id).maybeSingle()
+        setIdChecking(false)
+        if (data) {
+            setIdError(`Batch ID "${id}" already exists. Please use a different ID.`)
+        } else {
+            setIdError(null)
+        }
+    }
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         let value = e.target.value
 
-        // Sanitize Batch ID to prevent URL issues
         if (e.target.name === 'id') {
-            const sanitized = value.replace(/[^a-zA-Z0-9-_]/g, '').toUpperCase()
-            if (value !== sanitized) {
-                // Optional: You could show a toast here if you had one, but strict replacement works too
-            }
-            value = sanitized
+            value = value.replace(/[^a-zA-Z0-9-_]/g, '').toUpperCase()
+            checkIdExists(value)
         }
 
         setFormData({ ...formData, [e.target.name]: value })
@@ -197,9 +213,9 @@ export default function CreateBatchPage() {
                             required
                             onChange={handleChange}
                         />
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                            Only letters, numbers, hyphens (-), and underscores (_) allowed.
-                        </p>
+                        {idChecking && <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Checking ID...</p>}
+                        {idError && <p style={{ fontSize: '0.75rem', color: 'var(--error)', marginTop: '0.25rem', fontWeight: 500 }}>⚠ {idError}</p>}
+                        {!idError && !idChecking && <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>Only letters, numbers, hyphens (-), and underscores (_) allowed.</p>}
                     </div>
                     <div>
                         <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>Batch Name</label>
@@ -351,7 +367,7 @@ export default function CreateBatchPage() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                    <button type="submit" className="btn btn-primary" disabled={loading}>
+                    <button type="submit" className="btn btn-primary" disabled={loading || !!idError || idChecking}>
                         <Save size={20} style={{ marginRight: '0.5rem' }} />
                         {loading ? 'Creating...' : 'Create Batch'}
                     </button>
