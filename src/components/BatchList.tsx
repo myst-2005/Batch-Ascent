@@ -123,14 +123,16 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
             if (error) throw error
 
             if (data) {
-                // Fetch enrolled counts for each batch
                 const batchesWithCounts = await Promise.all(data.map(async (batch) => {
-                    const { count, data: enrollmentData } = await supabase
-                        .from('sales_enrollments')
-                        .select('*', { count: 'exact', head: false }) // changed head:true to head:false to get data
-                        .eq('batch_id', batch.id)
-
-                    return { ...batch, enrolled_count: count || 0 }
+                    try {
+                        const { count } = await supabase
+                            .from('sales_enrollments')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('batch_id', batch.id)
+                        return { ...batch, enrolled_count: count || 0 }
+                    } catch {
+                        return { ...batch, enrolled_count: 0 }
+                    }
                 }))
                 setBatches(batchesWithCounts)
             }
