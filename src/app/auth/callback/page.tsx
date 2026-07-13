@@ -3,35 +3,52 @@ export const dynamic = 'force-dynamic'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
+import { AlertCircle, Mail } from 'lucide-react'
 
 export default function AuthCallbackPage() {
     const router = useRouter()
     const [error, setError] = useState<string | null>(null)
+    const [resendEmail, setResendEmail] = useState('')
+    const [resendLoading, setResendLoading] = useState(false)
+    const [resendSent, setResendSent] = useState(false)
 
     useEffect(() => {
-        // Check for errors in the URL fragment (hash)
         if (typeof window !== 'undefined' && window.location.hash) {
-            const params = new URLSearchParams(window.location.hash.substring(1)) // remove the #
+            const params = new URLSearchParams(window.location.hash.substring(1))
+            const errorCode = params.get('error_code')
             const errorDescription = params.get('error_description')
 
-            if (errorDescription) {
-                setError(errorDescription.replace(/\+/g, ' '))
+            if (errorCode || errorDescription) {
+                setError(errorDescription?.replace(/\+/g, ' ') || 'Link expired or invalid')
                 return
             }
         }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
             if (event === 'SIGNED_IN') {
-                // User is now signed in (via the link)
-                // Redirect them to set their password
                 router.push('/update-password')
             }
         })
 
-        return () => {
-            subscription.unsubscribe()
-        }
+        return () => { subscription.unsubscribe() }
     }, [router])
+
+    const handleResend = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!resendEmail) return
+        setResendLoading(true)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(resendEmail, {
+                redirectTo: `${window.location.origin}/auth/callback`
+            })
+            if (error) throw error
+            setResendSent(true)
+        } catch (err: any) {
+            alert('Error: ' + err.message)
+        } finally {
+            setResendLoading(false)
+        }
+    }
 
     if (error) {
         return (
@@ -39,18 +56,68 @@ export default function AuthCallbackPage() {
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '100vh',
+                minHeight: '100vh',
                 background: 'var(--background)',
-                color: 'var(--foreground)',
-                flexDirection: 'column',
-                gap: '1rem',
-                textAlign: 'center',
                 padding: '2rem'
             }}>
-                <div style={{ color: 'var(--error)', fontSize: '1.25rem', fontWeight: 'bold' }}>Link Expired or Invalid</div>
-                <div>{error}</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>Please ask the admin to invite you again.</div>
-                <button onClick={() => router.push('/')} className="btn btn-primary" style={{ marginTop: '1rem' }}>Go to Login</button>
+                <div className="card" style={{ width: '100%', maxWidth: '400px' }}>
+                    <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{
+                            width: '48px', height: '48px',
+                            background: '#fee2e2', borderRadius: '12px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            margin: '0 auto 1rem'
+                        }}>
+                            <AlertCircle size={24} color="#ef4444" />
+                        </div>
+                        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.5rem' }}>Link Expired</h1>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
+                            This link has expired or already been used.<br />
+                            Enter your email to get a fresh link.
+                        </p>
+                    </div>
+
+                    {resendSent ? (
+                        <div style={{
+                            textAlign: 'center', padding: '1.25rem',
+                            background: '#f0fdf4', borderRadius: '0.75rem',
+                            border: '1px solid #bbf7d0', color: '#15803d'
+                        }}>
+                            <Mail size={22} style={{ margin: '0 auto 0.5rem', display: 'block' }} />
+                            <p style={{ fontWeight: 600 }}>New link sent!</p>
+                            <p style={{ fontSize: '0.8rem', marginTop: '0.25rem', color: '#166534' }}>
+                                Check your inbox and click the <strong>latest</strong> email only.
+                            </p>
+                        </div>
+                    ) : (
+                        <form onSubmit={handleResend} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+                                    Your Email
+                                </label>
+                                <input
+                                    type="email"
+                                    className="input"
+                                    placeholder="you@example.com"
+                                    required
+                                    value={resendEmail}
+                                    onChange={e => setResendEmail(e.target.value)}
+                                />
+                            </div>
+                            <button type="submit" className="btn btn-primary" disabled={resendLoading}>
+                                {resendLoading ? 'Sending...' : 'Send New Link'}
+                            </button>
+                        </form>
+                    )}
+
+                    <button
+                        onClick={() => router.push('/')}
+                        className="btn btn-secondary"
+                        style={{ width: '100%', marginTop: '0.75rem' }}
+                    >
+                        Back to Login
+                    </button>
+                </div>
             </div>
         )
     }
@@ -61,10 +128,9 @@ export default function AuthCallbackPage() {
             justifyContent: 'center',
             alignItems: 'center',
             height: '100vh',
-            background: 'var(--background)',
-            color: 'var(--foreground)'
+            background: 'var(--background)'
         }}>
-            <div className="animate-pulse">Verifying your account...</div>
+            <div className="animate-pulse" style={{ color: 'var(--text-secondary)' }}>Verifying your account...</div>
         </div>
     )
 }
