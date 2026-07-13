@@ -13,24 +13,43 @@ export default function AuthCallbackPage() {
     const [resendSent, setResendSent] = useState(false)
 
     useEffect(() => {
-        if (typeof window !== 'undefined' && window.location.hash) {
-            const params = new URLSearchParams(window.location.hash.substring(1))
-            const errorCode = params.get('error_code')
-            const errorDescription = params.get('error_description')
+        const handleCallback = async () => {
+            if (typeof window === 'undefined') return
 
-            if (errorCode || errorDescription) {
-                setError(errorDescription?.replace(/\+/g, ' ') || 'Link expired or invalid')
+            const hash = window.location.hash
+            const search = window.location.search
+            const params = new URLSearchParams(search)
+            const hashParams = new URLSearchParams(hash.substring(1))
+
+            // Check for errors in hash (implicit flow errors)
+            if (hash && (hashParams.get('error') || hashParams.get('error_code'))) {
+                setError(hashParams.get('error_description')?.replace(/\+/g, ' ') || 'Link expired or invalid')
                 return
             }
+
+            // PKCE flow: exchange code for session
+            const code = params.get('code')
+            if (code) {
+                const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+                if (exchangeError) {
+                    setError(exchangeError.message)
+                    return
+                }
+                router.push('/update-password')
+                return
+            }
+
+            // Implicit flow fallback: listen for SIGNED_IN
+            const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+                if (event === 'SIGNED_IN' || event === 'PASSWORD_RECOVERY') {
+                    router.push('/update-password')
+                }
+            })
+
+            return () => { subscription.unsubscribe() }
         }
 
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
-                router.push('/update-password')
-            }
-        })
-
-        return () => { subscription.unsubscribe() }
+        handleCallback()
     }, [router])
 
     const handleResend = async (e: React.FormEvent) => {
