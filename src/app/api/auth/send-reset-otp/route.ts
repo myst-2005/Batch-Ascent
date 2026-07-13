@@ -103,7 +103,10 @@ export async function POST(request: Request) {
 
         if (sendError) {
             console.error('Resend send error:', sendError)
-            return NextResponse.json({ error: 'Could not send the reset email' }, { status: 502 })
+            return NextResponse.json(
+                { error: 'Could not send the reset email', details: (sendError as any).message || String(sendError) },
+                { status: 502 }
+            )
         }
 
         return genericOk

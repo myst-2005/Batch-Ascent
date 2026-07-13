@@ -21,6 +21,12 @@ interface BatchListProps {
     view?: 'current' | 'past'
 }
 
+// Local (not UTC) YYYY-MM-DD so batches near midnight aren't misclassified.
+function getTodayStr() {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function BatchList({ view = 'current' }: BatchListProps) {
     const router = useRouter()
     const [batches, setBatches] = useState<Batch[]>([])
@@ -54,8 +60,16 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
         setFilterCourse('All')
     }, [filterSchool])
 
+    const todayStr = getTodayStr()
+
     const filteredBatches = batches
         .filter(batch => {
+            // Guard: "past" = already started; "current" = upcoming / not yet started.
+            // This prevents upcoming batches from ever showing in the Past list.
+            const batchDate = (batch.start_date || '').split('T')[0]
+            if (view === 'past' && !(batchDate && batchDate < todayStr)) return false
+            if (view === 'current' && !(batchDate && batchDate >= todayStr)) return false
+
             if (filterCourse !== 'All' && batch.course !== filterCourse) return false
             if (filterMode !== 'All' && (batch.mode || 'Offline') !== filterMode) return false
             if (filterSchool !== 'All' && batch.school !== filterSchool) return false
@@ -110,7 +124,7 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
             }
 
             // Date filtering using start_date: past = orientation already happened, current = upcoming or today
-            const todayStr = new Date().toISOString().split('T')[0]
+            const todayStr = getTodayStr()
 
             if (view === 'past') {
                 query = query.lt('start_date', todayStr)
