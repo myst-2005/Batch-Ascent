@@ -68,7 +68,10 @@ export async function POST(request: Request) {
 
         if (insertError) {
             console.error('OTP insert error:', insertError)
-            return NextResponse.json({ error: 'Could not create reset code' }, { status: 500 })
+            return NextResponse.json(
+                { error: 'Could not create reset code', details: insertError.message, code: insertError.code },
+                { status: 500 }
+            )
         }
 
         // Send the code via Resend (our own template — no Supabase dashboard involved).
