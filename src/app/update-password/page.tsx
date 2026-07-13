@@ -21,18 +21,29 @@ export default function UpdatePasswordPage() {
         // Check for error in URL hash (e.g. otp_expired)
         if (typeof window !== 'undefined') {
             const hash = window.location.hash
-            if (hash && hash.includes('error')) {
-                const params = new URLSearchParams(hash.substring(1))
-                const errorCode = params.get('error_code')
-                if (errorCode === 'otp_expired' || params.get('error') === 'access_denied') {
-                    setLinkExpired(true)
-                    return
-                }
+            const query = new URLSearchParams(window.location.search)
+
+            // Error can arrive in either the hash (implicit flow) or query (PKCE)
+            const errorCode = hash.includes('error')
+                ? new URLSearchParams(hash.substring(1)).get('error_code')
+                : query.get('error_code')
+            const errorType = hash.includes('error')
+                ? new URLSearchParams(hash.substring(1)).get('error')
+                : query.get('error')
+
+            if (errorCode === 'otp_expired' || errorType === 'access_denied') {
+                setLinkExpired(true)
+                return
             }
 
-            // If tokens in hash, let Supabase exchange them
-            if (hash && hash.includes('access_token')) {
-                // Supabase will handle this via onAuthStateChange
+            // PKCE flow: exchange the code for a session so old emails that
+            // still point directly to /update-password keep working.
+            const code = query.get('code')
+            if (code) {
+                supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+                    if (error) setLinkExpired(true)
+                    // On success, onAuthStateChange / init() below loads the profile.
+                })
             }
         }
 
