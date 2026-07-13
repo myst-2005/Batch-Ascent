@@ -3,28 +3,29 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
-import { Mail, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Mail, ArrowLeft, AlertCircle, Lock, KeyRound } from 'lucide-react'
 import styles from '../page.module.css'
 
 export default function ForgotPasswordPage() {
+    const router = useRouter()
+    const [step, setStep] = useState<'email' | 'verify'>('email')
     const [email, setEmail] = useState('')
+    const [code, setCode] = useState('')
+    const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
-    const [success, setSuccess] = useState(false)
 
-    const handleReset = async (e: React.FormEvent) => {
+    // ── Step 1: send the OTP code ──
+    const handleSendCode = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email, {
-                redirectTo: `${window.location.origin}/auth/callback`,
-            })
-
+            const { error } = await supabase.auth.resetPasswordForEmail(email)
             if (error) throw error
-
-            setSuccess(true)
+            setStep('verify')
         } catch (err: any) {
             console.error('Reset error:', err)
             setError(err.message)
@@ -33,39 +34,74 @@ export default function ForgotPasswordPage() {
         }
     }
 
-    if (success) {
-        return (
-            <div className={styles.container}>
-                <div className={`card glass ${styles.loginCard} animate-fade-in`} style={{ textAlign: 'center' }}>
-                    <div style={{ width: '120px', height: '120px', margin: '0 auto 1.5rem', position: 'relative' }}>
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src="/logo-new.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px' }} />
-                    </div>
-                    <div style={{ color: '#22c55e', marginBottom: '1rem' }}>
-                        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                        </svg>
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Check your email</h2>
-                    <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-                        We've sent a password reset link to <strong>{email}</strong>.
-                    </p>
-                    <Link href="/" className="btn btn-primary" style={{ display: 'inline-block', width: '100%' }}>
-                        Back to Login
-                    </Link>
-                </div>
-            </div>
-        )
+    // ── Step 2: verify the OTP code + set the new password ──
+    const handleVerifyAndReset = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError('')
+
+        if (password !== confirmPassword) {
+            setError('Passwords do not match.')
+            return
+        }
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters.')
+            return
+        }
+
+        setLoading(true)
+        try {
+            // Verify the 6-digit recovery code — this creates a session
+            const { error: verifyError } = await supabase.auth.verifyOtp({
+                email,
+                token: code.trim(),
+                type: 'recovery',
+            })
+            if (verifyError) throw verifyError
+
+            // Now update the password on the authenticated session
+            const { error: updateError } = await supabase.auth.updateUser({ password })
+            if (updateError) throw updateError
+
+            await supabase.auth.signOut()
+            alert('Password updated successfully! Please log in with your new password.')
+            router.push('/')
+        } catch (err: any) {
+            console.error('Verify error:', err)
+            const msg = (err.message || '').toLowerCase()
+            if (msg.includes('expired') || msg.includes('invalid')) {
+                setError('That code is invalid or has expired. Please request a new one.')
+            } else {
+                setError(err.message)
+            }
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const resend = async () => {
+        setError('')
+        setLoading(true)
+        try {
+            const { error } = await supabase.auth.resetPasswordForEmail(email)
+            if (error) throw error
+        } catch (err: any) {
+            setError(err.message)
+        } finally {
+            setLoading(false)
+        }
     }
 
     return (
         <div className={styles.container}>
             <div className={`card glass ${styles.loginCard} animate-fade-in`}>
                 <div className={styles.header}>
-                    <Link href="/" style={{ position: 'absolute', left: '1.5rem', top: '1.5rem', color: 'var(--text-secondary)' }}>
+                    <button
+                        onClick={() => (step === 'verify' ? setStep('email') : router.push('/'))}
+                        style={{ position: 'absolute', left: '1.5rem', top: '1.5rem', color: 'var(--text-secondary)', background: 'none', border: 'none', cursor: 'pointer' }}
+                        aria-label="Back"
+                    >
                         <ArrowLeft size={20} />
-                    </Link>
+                    </button>
 
                     <div style={{ width: '150px', height: '150px', margin: '0 auto 1rem' }}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -73,7 +109,11 @@ export default function ForgotPasswordPage() {
                     </div>
 
                     <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>Reset Password</h2>
-                    <p className={styles.subtitle}>Enter your email to receive instructions</p>
+                    <p className={styles.subtitle}>
+                        {step === 'email'
+                            ? 'Enter your email to receive a reset code'
+                            : `Enter the 6-digit code sent to ${email}`}
+                    </p>
                 </div>
 
                 {error && (
@@ -83,38 +123,111 @@ export default function ForgotPasswordPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleReset} className={styles.form}>
-                    <div className={styles.inputGroup}>
-                        <label className={styles.label}>Email Address</label>
-                        <div className={styles.inputWrapper}>
-                            <Mail className={styles.icon} size={20} />
-                            <input
-                                name="email"
-                                type="email"
-                                placeholder="Enter your email"
-                                className={`input ${styles.inputWithIcon}`}
-                                value={email}
-                                onChange={e => setEmail(e.target.value)}
-                                required
-                            />
+                {step === 'email' ? (
+                    <form onSubmit={handleSendCode} className={styles.form}>
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Email Address</label>
+                            <div className={styles.inputWrapper}>
+                                <Mail className={styles.icon} size={20} />
+                                <input
+                                    name="email"
+                                    type="email"
+                                    placeholder="Enter your email"
+                                    className={`input ${styles.inputWithIcon}`}
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    required
+                                />
+                            </div>
                         </div>
-                    </div>
 
-                    <button
-                        type="submit"
-                        className="btn btn-primary"
-                        style={{ width: '100%', marginTop: '0.5rem' }}
-                        disabled={loading}
-                    >
-                        {loading ? 'Sending Link...' : 'Send Reset Link'}
-                    </button>
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            style={{ width: '100%', marginTop: '0.5rem' }}
+                            disabled={loading}
+                        >
+                            {loading ? 'Sending Code...' : 'Send Reset Code'}
+                        </button>
 
-                    <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
-                            Remember password? <Link href="/" style={{ color: 'var(--primary)', fontWeight: '600' }}>Login</Link>
-                        </p>
-                    </div>
-                </form>
+                        <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                Remember password? <Link href="/" style={{ color: 'var(--primary)', fontWeight: '600' }}>Login</Link>
+                            </p>
+                        </div>
+                    </form>
+                ) : (
+                    <form onSubmit={handleVerifyAndReset} className={styles.form}>
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Reset Code</label>
+                            <div className={styles.inputWrapper}>
+                                <KeyRound className={styles.icon} size={20} />
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    autoComplete="one-time-code"
+                                    maxLength={6}
+                                    placeholder="6-digit code"
+                                    className={`input ${styles.inputWithIcon}`}
+                                    value={code}
+                                    onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
+                                    required
+                                    style={{ letterSpacing: '0.3em' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>New Password</label>
+                            <div className={styles.inputWrapper}>
+                                <Lock className={styles.icon} size={20} />
+                                <input
+                                    type="password"
+                                    placeholder="New password"
+                                    className={`input ${styles.inputWithIcon}`}
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                        </div>
+
+                        <div className={styles.inputGroup}>
+                            <label className={styles.label}>Confirm New Password</label>
+                            <div className={styles.inputWrapper}>
+                                <Lock className={styles.icon} size={20} />
+                                <input
+                                    type="password"
+                                    placeholder="Confirm new password"
+                                    className={`input ${styles.inputWithIcon}`}
+                                    value={confirmPassword}
+                                    onChange={e => setConfirmPassword(e.target.value)}
+                                    required
+                                    minLength={6}
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="btn btn-primary"
+                            style={{ width: '100%', marginTop: '0.5rem' }}
+                            disabled={loading}
+                        >
+                            {loading ? 'Updating...' : 'Reset Password'}
+                        </button>
+
+                        <div style={{ textAlign: 'center', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                Didn&apos;t get a code?{' '}
+                                <button type="button" onClick={resend} disabled={loading} style={{ color: 'var(--primary)', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                    Resend
+                                </button>
+                            </p>
+                        </div>
+                    </form>
+                )}
             </div>
         </div>
     )
