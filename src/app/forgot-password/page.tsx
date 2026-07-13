@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabaseClient'
 import { Mail, ArrowLeft, AlertCircle, Lock, KeyRound } from 'lucide-react'
 import styles from '../page.module.css'
 
@@ -16,15 +15,20 @@ export default function ForgotPasswordPage() {
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
 
-    // ── Step 1: send the OTP code ──
+    // ── Step 1: send the OTP code (custom flow via /api/auth/send-reset-otp) ──
     const handleSendCode = async (e: React.FormEvent) => {
         e.preventDefault()
         setError('')
         setLoading(true)
 
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email)
-            if (error) throw error
+            const res = await fetch('/api/auth/send-reset-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Could not send the code')
             setStep('verify')
         } catch (err: any) {
             console.error('Reset error:', err)
@@ -50,29 +54,19 @@ export default function ForgotPasswordPage() {
 
         setLoading(true)
         try {
-            // Verify the 6-digit recovery code — this creates a session
-            const { error: verifyError } = await supabase.auth.verifyOtp({
-                email,
-                token: code.trim(),
-                type: 'recovery',
+            const res = await fetch('/api/auth/verify-reset-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, code: code.trim(), password }),
             })
-            if (verifyError) throw verifyError
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Could not reset the password')
 
-            // Now update the password on the authenticated session
-            const { error: updateError } = await supabase.auth.updateUser({ password })
-            if (updateError) throw updateError
-
-            await supabase.auth.signOut()
             alert('Password updated successfully! Please log in with your new password.')
             router.push('/')
         } catch (err: any) {
             console.error('Verify error:', err)
-            const msg = (err.message || '').toLowerCase()
-            if (msg.includes('expired') || msg.includes('invalid')) {
-                setError('That code is invalid or has expired. Please request a new one.')
-            } else {
-                setError(err.message)
-            }
+            setError(err.message)
         } finally {
             setLoading(false)
         }
@@ -82,8 +76,13 @@ export default function ForgotPasswordPage() {
         setError('')
         setLoading(true)
         try {
-            const { error } = await supabase.auth.resetPasswordForEmail(email)
-            if (error) throw error
+            const res = await fetch('/api/auth/send-reset-otp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email }),
+            })
+            const data = await res.json()
+            if (!res.ok) throw new Error(data.error || 'Could not resend the code')
         } catch (err: any) {
             setError(err.message)
         } finally {
