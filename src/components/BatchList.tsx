@@ -109,13 +109,13 @@ export default function BatchList({ view = 'current' }: BatchListProps) {
                 // Or we could enhance query, but client-side is fine for dashboard list usually.
             }
 
-            // Date filtering using end_date: current = not ended yet, past = already ended
+            // Date filtering using start_date: past = orientation already happened, current = upcoming or today
             const todayStr = new Date().toISOString().split('T')[0]
 
             if (view === 'past') {
-                query = query.lt('end_date', todayStr)
+                query = query.lt('start_date', todayStr)
             } else {
-                query = query.or(`end_date.gte.${todayStr},end_date.is.null`)
+                query = query.gte('start_date', todayStr)
             }
 
             const { data, error } = await query
