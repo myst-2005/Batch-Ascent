@@ -5,7 +5,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell
 } from 'recharts'
-import { BookOpen, Users, TrendingUp, Phone } from 'lucide-react'
+import { BookOpen, Users, TrendingUp } from 'lucide-react'
 
 interface Batch {
     id: string
@@ -313,79 +313,7 @@ export default function ProjectOverview() {
                         </>
                     )}
 
-                    {/* SHO / SSHO / ADMIN / CEO: See Pending Calls */}
-                    {['SHO', 'SSHO', 'ADMIN', 'CEO', 'ACADEMIC_LEAD', 'SALES_HEAD'].includes(userRole || '') && (
-                        <>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-                                <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-primary)' }}>
-                                    Pending Calls (Verified Students)
-                                    <span style={{
-                                        background: '#3b82f6', color: 'white',
-                                        padding: '0.125rem 0.5rem', borderRadius: '999px',
-                                        fontSize: '0.75rem', verticalAlign: 'middle'
-                                    }}>
-                                        {stats.toCallList.length}
-                                    </span>
-                                </h3>
-                            </div>
-
-                            {stats.toCallList.length > 0 ? (
-                                <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-                                    {stats.toCallList.map((student: any, index: number) => (
-                                        <a
-                                            key={student.id}
-                                            href={`/dashboard/batch/${student.batch_id}`}
-                                            style={{ textDecoration: 'none', color: 'inherit' }}
-                                        >
-                                            <div style={{
-                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                                padding: '1rem 1.5rem',
-                                                borderBottom: index !== stats.toCallList.length - 1 ? '1px solid var(--border)' : 'none',
-                                                transition: 'background 0.2s',
-                                                background: 'var(--surface)'
-                                            }}
-                                                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--surface-hover)'}
-                                                onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
-                                            >
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <div style={{
-                                                        width: '40px', height: '40px', borderRadius: '50%',
-                                                        background: '#bfdbfe', color: '#1d4ed8',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        fontWeight: 'bold'
-                                                    }}>
-                                                        {student.student_name?.[0]?.toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', color: 'var(--text-primary)' }}>{student.student_name}</div>
-                                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                                                            Batch: {student.batch_name}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <div style={{
-                                                        fontSize: '0.85rem', color: '#2563eb', fontWeight: 600,
-                                                        display: 'flex', alignItems: 'center', gap: '0.5rem'
-                                                    }}>
-                                                        Call Student
-                                                        <Phone size={16} />
-                                                    </div>
-                                                    <div style={{ color: 'var(--text-tertiary)' }}>→</div>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="card" style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📞</div>
-                                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>All Calls Done!</div>
-                                    <div>No verified students waiting for a call.</div>
-                                </div>
-                            )}
-                        </>
-                    )}
+                    {/* Pending Calls now live in their own dedicated tab (/dashboard/pending-calls) */}
 
                 </div>
             ) : (

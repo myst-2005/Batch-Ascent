@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp, History, Activity } from 'lucide-react'
+import { LayoutDashboard, PlusCircle, Users, LogOut, Link as LinkIcon, ChevronLeft, ChevronRight, BookOpen, Menu, TrendingUp, History, Activity, Phone } from 'lucide-react'
 import styles from './dashboard.module.css'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -41,6 +41,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Status', href: '/dashboard/status', icon: TrendingUp, roles: ['ADMIN', 'CEO', 'PROJECT_LEAD'] },
         { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Sales Intimation', href: '/dashboard/sales/intimation', icon: PlusCircle, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
+        { label: 'Pending Calls', href: '/dashboard/pending-calls', icon: Phone, roles: ['SHO', 'SSHO', 'ACADEMIC_LEAD', 'PROJECT_LEAD', 'SALES', 'SALES_HEAD', 'SUB_ADMIN', 'ADMIN', 'CEO'] },
         { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD', 'ADMIN'] },
         { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
