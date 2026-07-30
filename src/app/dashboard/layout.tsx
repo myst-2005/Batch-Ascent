@@ -42,7 +42,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { label: 'Sales Dashboard', href: '/dashboard/sales', icon: Users, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Sales Intimation', href: '/dashboard/sales/intimation', icon: PlusCircle, roles: ['SALES', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Pending Calls', href: '/dashboard/pending-calls', icon: Phone, roles: ['SHO', 'SSHO', 'ACADEMIC_LEAD', 'PROJECT_LEAD', 'SALES', 'SALES_HEAD', 'SUB_ADMIN', 'ADMIN', 'CEO'] },
-        { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD', 'ADMIN'] },
+        { label: 'Batches', href: '/dashboard/batches', icon: BookOpen, roles: ['PROJECT_LEAD', 'CEO', 'SALES_HEAD', 'ADMIN', 'SALES'] },
         { label: 'Past Batches', href: '/dashboard/past-batches', icon: History, roles: ['ACADEMIC_LEAD', 'SHO', 'SALES_HEAD', 'ADMIN', 'CEO'] },
         { label: 'Create Batch', href: '/dashboard/create-batch', icon: PlusCircle, roles: ['ACADEMIC_LEAD', 'ADMIN', 'CEO'] },
         { label: 'Link Student', href: '/dashboard/link-student', icon: LinkIcon, roles: ['SHO', 'ACADEMIC_LEAD', 'SSHO', 'ADMIN', 'SALES_HEAD', 'CEO'] },
