@@ -156,6 +156,9 @@ export default function BatchDetailsPage({ params }: { params: Promise<{ id: str
         const { data } = await supabase
             .from('users')
             .select('id, name, school')
+            // Only staff who are still approved — see the note in
+            // create-batch: a resigned SHO otherwise stays in every picker.
+            .eq('is_approved', true)
             .in('role', ['SHO', 'SSHO'])
             .eq('school', school)
             .order('name')

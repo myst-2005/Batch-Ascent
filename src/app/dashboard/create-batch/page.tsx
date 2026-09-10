@@ -89,6 +89,13 @@ export default function CreateBatchPage() {
             const { data, error } = await supabase
                 .from('users')
                 .select('name')
+                // Only staff who are still approved. Without this a SHO who has
+                // left keeps their SHO role forever and goes on being offered
+                // in every picker — two Tech School SHOs resigned and were
+                // still listed here. Un-approving someone now removes them
+                // from the dropdowns without deleting the row their old
+                // batches still refer to.
+                .eq('is_approved', true)
                 .in('role', ['SHO', 'SSHO'])
                 .eq('school', school)
 
