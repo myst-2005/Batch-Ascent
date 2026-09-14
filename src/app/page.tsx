@@ -23,29 +23,14 @@ export default function LoginPage() {
     else if (school === 'Design School') prefix = 'DS'
     else if (school === 'Finance School') prefix = 'FS'
 
-    // Get all existing sales IDs for this school/prefix to ensure uniqueness
-    const { data } = await supabase
-      .from('users')
-      .select('sales_id')
-      .eq('school', school)
-      .eq('role', 'SALES')
-
-    let maxNum = 0
-
-    if (data) {
-      data.forEach((user: any) => {
-        if (user.sales_id && user.sales_id.startsWith(prefix)) {
-          const parts = user.sales_id.split('-')
-          if (parts.length === 2) {
-            const num = parseInt(parts[1])
-            if (!isNaN(num) && num > maxNum) maxNum = num
-          }
-        }
-      })
-    }
-
-    const nextNum = maxNum + 1
-    return `${prefix}-${nextNum.toString().padStart(2, '0')}`
+    // Was: read every existing sales_id for this school, compute max+1, then update — two
+    // logins completing close together both read the same max and collide on the unique
+    // constraint (409 "duplicate key value violates unique constraint users_sales_id_key",
+    // reproduced live). generate_next_sales_id does the read-and-increment atomically in
+    // Postgres instead, so concurrent calls can never receive the same id.
+    const { data, error } = await supabase.rpc('generate_next_sales_id', { p_prefix: prefix })
+    if (error) throw error
+    return data as string
   }
 
   const handleLogin = async (e: React.FormEvent) => {

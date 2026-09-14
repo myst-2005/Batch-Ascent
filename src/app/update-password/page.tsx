@@ -108,20 +108,19 @@ export default function UpdatePasswordPage() {
                 const school = userData?.school || user?.user_metadata?.school || ''
 
                 if (role === 'SALES') {
-                    let schoolPrefix = 'SALES'
+                    let schoolPrefix = 'EX'
                     if (school.toLowerCase().includes('tech')) schoolPrefix = 'TS'
                     else if (school.toLowerCase().includes('design')) schoolPrefix = 'DS'
                     else if (school.toLowerCase().includes('marketing')) schoolPrefix = 'MS'
                     else if (school.toLowerCase().includes('finance')) schoolPrefix = 'FS'
 
-                    const { count } = await supabase
-                        .from('users')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('role', 'SALES')
-                        .eq('school', school)
-                        .not('sales_id', 'is', null)
-
-                    const salesId = `${schoolPrefix}${String((count || 0) + 1).padStart(3, '0')}`
+                    // Was: count existing sales_ids then use count+1 — racy the same way as
+                    // the login page's version (see src/app/page.tsx), and produced a
+                    // different id format (TS001 vs TS-01) besides. generate_next_sales_id
+                    // does the increment atomically in Postgres and matches the id format
+                    // used everywhere else.
+                    const { data: salesId, error: rpcError } = await supabase.rpc('generate_next_sales_id', { p_prefix: schoolPrefix })
+                    if (rpcError) throw rpcError
                     await supabase.from('users').update({ sales_id: salesId, phone }).eq('id', user?.id)
                 }
             }
