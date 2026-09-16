@@ -135,12 +135,19 @@ h6 {
   padding: 1.5rem;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: box-shadow 0.2s, border-color 0.2s;
 }
 
+/* No transform here (was translateY(-4px)) — a `transform` on any ancestor gives Safari a new
+   containing block for descendant <select>/<input type=date> elements, and Safari's native
+   popup positioning/click hit-testing for those controls gets unreliable right after the
+   hover-triggered shift (the cursor's screen position no longer lines up with the moved element
+   until the next mousemove). Every .card wraps at least one form on this site — Create Batch,
+   Link Student, Batch Edit — so this was a live "dropdown doesn't open on the first click"
+   hazard in Safari on all of them, not just one page. Shadow + border color still carry the
+   hover affordance without moving the box under the cursor. */
 .card:hover {
   box-shadow: var(--shadow-lg);
-  transform: translateY(-4px);
   border-color: var(--primary);
   /* Darker outline */
   border-width: 2px;
