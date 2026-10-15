@@ -4,17 +4,17 @@
   align-items: center;
   justify-content: center;
   padding: 2rem 1.25rem;
-  background: #0f172a;
+  background: #f8fafc;
 }
 
 .card {
   width: 100%;
   max-width: 560px;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 1.5rem;
   padding: 2.5rem 2rem;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 20px 25px -5px rgba(15, 23, 42, 0.08);
 }
 
 .logo {
@@ -22,6 +22,7 @@
   height: 48px;
   border-radius: 0.75rem;
   background: #fff;
+  border: 1px solid #e2e8f0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,20 +40,20 @@
   text-align: center;
   font-size: 1.4rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: #0f172a;
   margin: 0 0 0.5rem;
 }
 
 .subtitle {
   text-align: center;
   font-size: 0.95rem;
-  color: #94a3b8;
+  color: #64748b;
   margin: 0 0 2rem;
 }
 
 .block {
-  background: #0f172a;
-  border: 1px solid #334155;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
   border-radius: 1rem;
   padding: 1.25rem 1.5rem;
 }
@@ -66,14 +67,14 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #38bdf8;
+  color: #2563eb;
   margin: 0 0 0.75rem;
 }
 
 .block p {
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #cbd5e1;
+  color: #334155;
   margin: 0 0 0.6rem;
 }
 
